@@ -7,6 +7,9 @@
 // TODO: parameter validation
 fastq_dir = params.fastq_dir
 sample_sheet = params.sample_sheet
+organism = params.organism
+reference_dir = params.reference_sequences
+igblastdb_dir = params.igblast_databases
 
 // TODO: introductory message that prints out parameters
 
@@ -15,8 +18,11 @@ sample_sheet = params.sample_sheet
 /*
  * Bring in modules
  */
-include { parse_sample_sheet } from './modules/local/file_import'
-include { nanocomp } from './modules/local/nanocomp'
+include { parse_sample_sheet } from './subworkflows/file_import'
+include { nanocomp } from './modules/local/nanocomp' 
+include { select_ab_reads } from './subworkflows/select_ab_reads'
+include { cutadapt_trimming } from './subworkflows/trimming'
+
 
 /*
  * Run the workflow
@@ -33,8 +39,11 @@ workflow{
     nanocomp(nanocomp_input)
 
     // select antibody reads (w/ minimap2 alignment)
-
+    all_ab_reference_file = file("${reference_dir}/${organism}_all_imgt_refs.fasta")
+    ab_reads = select_ab_reads(concatenated_files, all_ab_reference_file)
+    
     // trim the 3' and 5' ends (by default polyA tail, user can specify if they have primers)
+    //trimmed_reads = cutadapt_trimming(ab_reads)
 
     // run igblast on the trimmed reads
 
