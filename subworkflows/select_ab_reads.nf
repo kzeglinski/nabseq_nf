@@ -1,7 +1,7 @@
 // do minimap2 alignment to the specified reference
 // then, use seqkit to select the reads that align
 
-include { minimap2_alignment} from '../modules/local/minimap2' 
+include { minimap2_alignment } from '../modules/local/minimap2' 
 
 process subset_aligned_reads {
     tag {sample_name}

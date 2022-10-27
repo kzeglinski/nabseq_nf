@@ -9,7 +9,9 @@
 fastq_dir = params.fastq_dir
 sample_sheet = params.sample_sheet
 reference_dir = params.reference_sequences
-igblastdb_dir = params.igblast_databases
+igblast_databases = params.igblast_databases
+igdata_dir="${igblast_databases}/igdata/"
+igblastdb_dir="${igblast_databases}/databases/"
 
 // TODO: check these are strings
 organism = params.organism
@@ -27,7 +29,8 @@ include { parse_sample_sheet } from './subworkflows/file_import'
 include { nanocomp } from './modules/local/nanocomp' 
 include { select_ab_reads } from './subworkflows/select_ab_reads'
 include { cutadapt } from './modules/local/cutadapt'
-
+include { fastq_to_fasta } from './modules/local/fastq_to_fasta'
+include { annotation_grouping_pre_consensus } from './subworkflows/annotation_grouping_pre_consensus'
 
 /*
  * Run the workflow
@@ -49,9 +52,12 @@ workflow{
     ab_reads = select_ab_reads(concatenated_files, all_ab_reference_file)
     
     // trim the 3' and 5' ends (by default polyA tail, user can specify if they have primers)
-    trimmed_reads = cutadapt(ab_reads, trim_3p, trim_5p)
+    trimmed_reads = cutadapt(ab_reads, trim_3p, trim_5p).reads
+    
 
     // annotation and grouping
+    trimmed_read_fasta = fastq_to_fasta(trimmed_reads) //IgBLAST needs fasta not fastq
+    annotation_grouping_pre_consensus(trimmed_read_fasta, organism, igblast_databases, igdata_dir, igblastdb_dir)
 
     // consensus calling 
 
@@ -60,6 +66,5 @@ workflow{
     // make report
 
     // finished! print some kind of message to user
-
     // also email if they want?
 }
