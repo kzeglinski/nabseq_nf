@@ -17,6 +17,7 @@ igblastdb_dir="${igblast_databases}/databases/"
 organism = params.organism
 trim_3p = params.trim_3p
 trim_5p = params.trim_5p
+num_consensus = params.num_consensus
 
 // TODO: introductory message that prints out parameters
 
@@ -57,7 +58,13 @@ workflow{
 
     // annotation and grouping
     trimmed_read_fasta = fastq_to_fasta(trimmed_reads) //IgBLAST needs fasta not fastq
-    annotation_grouping_pre_consensus(trimmed_read_fasta, organism, igblast_databases, igdata_dir, igblastdb_dir)
+    annotation_grouping_pre_consensus(
+        trimmed_read_fasta, 
+        organism, 
+        igblast_databases, 
+        igdata_dir, 
+        igblastdb_dir,
+        num_consensus)
 
     // consensus calling 
 
