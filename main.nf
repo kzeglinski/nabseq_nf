@@ -26,7 +26,7 @@ trim_5p = params.trim_5p
 include { parse_sample_sheet } from './subworkflows/file_import'
 include { nanocomp } from './modules/local/nanocomp' 
 include { select_ab_reads } from './subworkflows/select_ab_reads'
-include { cutadapt_trimming } from './subworkflows/trimming'
+include { cutadapt } from './modules/local/cutadapt'
 
 
 /*
@@ -49,17 +49,13 @@ workflow{
     ab_reads = select_ab_reads(concatenated_files, all_ab_reference_file)
     
     // trim the 3' and 5' ends (by default polyA tail, user can specify if they have primers)
-    trimmed_reads = cutadapt_trimming(ab_reads, trim_3p, trim_5p)
+    trimmed_reads = cutadapt(ab_reads, trim_3p, trim_5p)
 
-    // run igblast on the trimmed reads
-
-    // group reads based on igblast output 
+    // annotation and grouping
 
     // consensus calling 
 
-    // re-igblast of consensus sequences
-
-    // process this new output
+    // annotation & grouping/analysis of consensus sequences
 
     // make report
 
