@@ -12,7 +12,7 @@ process pre_consensus_groupings {
     conda (params.enable_conda ? 'r::r-tidyverse=1.2.1' : null)
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         'https://depot.galaxyproject.org/singularity/r-tidyverse%3A1.2.1' :
-        'quay.io/biocontainers/igblast:1.19.0--pl5321h3928612_0' }"
+        'quay.io/biocontainers/r-tidyverse:1.2.1' }"
 
     input:
     tuple val(meta), path(igblast_output)
@@ -20,7 +20,9 @@ process pre_consensus_groupings {
 
     output:
     tuple val(meta), path('*_pre_consensus_grouped_table.tsv'), path("*.txt"), emit: grouped_table
-    tuple val(meta), path("*_starting_point_name.txt"), path("*_read_names.txt"), emit: grouped_txts
+    //tuple val(meta), path("*_starting_point_name.txt"), path("*_read_names.txt"), emit: grouped_txts
+    path("*_starting_point_name.txt"), emit: starting_points
+    path("*_read_names.txt"), emit: read_names
 
     script:
     """
@@ -137,9 +139,11 @@ workflow annotation_grouping_pre_consensus {
 
         // process this in R
         pre_consensus_groupings(igblast_tsv, num_consensus)
-        
+        read_names_for_consensus = pre_consensus_groupings.out.read_names
+        starting_points_for_consensus = pre_consensus_groupings.out.starting_points
 
-    //emit:
-    //    ab_reads
+    emit:
+        read_names_for_consensus
+        starting_points_for_consensus
 
 }
