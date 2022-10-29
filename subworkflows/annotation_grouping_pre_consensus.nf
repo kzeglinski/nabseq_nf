@@ -40,12 +40,16 @@ process pre_consensus_groupings {
     mutate(n = rep(1, nrow(igblast_results))) %>%
     group_by(v_call, d_call, j_call, c_call) %>%
         summarise(count = sum(n), .groups = "keep", 
-            reads = paste(sequence_id, collapse = "_")) -> igblast_results_grouped
+            reads = paste(sequence_id, collapse = "_")) -> igblast_results_grouped_full
 
     # write out a copy of this table 
-    write_tsv(igblast_results_grouped, "${meta}_pre_consensus_grouped_table.tsv")
+    write_tsv(igblast_results_grouped_full, "${meta}_pre_consensus_grouped_table.tsv")
 
     # prepare for consensus calling 
+    # remove those that have less than 3 counts (can't make a consensus with 1 or 2 reads)
+    igblast_results_grouped_full %>%
+        filter(count >= 3) -> igblast_results_grouped
+
     # separate out the heavy and light chains
     igblast_results_grouped_H <- filter(igblast_results_grouped, str_detect(v_call, "H"))
     igblast_results_grouped_L <- filter(igblast_results_grouped,

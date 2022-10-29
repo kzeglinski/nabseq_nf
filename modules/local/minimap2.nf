@@ -19,6 +19,7 @@ process minimap2_alignment {
 
     output:
     tuple val(meta), path("*.paf"), path(reads), optional: true, emit: paf_reads
+    tuple val(meta), path(reads), path(reference), path("*.paf"), optional: true, emit: for_racon
     path "versions.yml"           , emit: versions
 
     when:
