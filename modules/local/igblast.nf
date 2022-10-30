@@ -15,9 +15,10 @@ process igblast {
     val igblast_databases
     env IGDATA
     env IGBLASTDB
+    val pre_post
 
     output:
-    tuple val(meta), path('*_pre_consensus_igblast.tsv'), emit: airr_table
+    tuple val(meta), path('*_consensus_igblast.tsv'), emit: airr_table
 
     when:
     task.ext.when == null || task.ext.when
@@ -37,6 +38,6 @@ process igblast {
         -auxiliary_data ${igblast_databases}/igdata/optional_file/${organism}_gl.aux \
         -show_translation \
         -num_alignments_V 1 -num_alignments_D 1 -num_alignments_J 1 -num_alignments_C 1 \
-        -outfmt 19 > ${meta}_pre_consensus_igblast.tsv
+        -outfmt 19 > ${meta}_${pre_post}_consensus_igblast.tsv
     """
 }

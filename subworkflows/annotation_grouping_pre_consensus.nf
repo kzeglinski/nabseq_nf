@@ -19,7 +19,7 @@ process pre_consensus_groupings {
     val num_consensus
 
     output:
-    tuple val(meta), path('*_pre_consensus_grouped_table.tsv'), path("*.txt"), emit: grouped_table
+    tuple val(meta), path('*_pre_consensus_grouped_table.tsv'), emit: grouped_table
     //tuple val(meta), path("*_starting_point_name.txt"), path("*_read_names.txt"), emit: grouped_txts
     path("*_starting_point_name.txt"), emit: starting_points
     path("*_read_names.txt"), emit: read_names
@@ -40,24 +40,32 @@ process pre_consensus_groupings {
     mutate(n = rep(1, nrow(igblast_results))) %>%
     group_by(v_call, d_call, j_call, c_call) %>%
         summarise(count = sum(n), .groups = "keep", 
-            reads = paste(sequence_id, collapse = "_")) -> igblast_results_grouped_full
+            reads = paste(sequence_id, collapse = "_")) -> igblast_results_grouped
+
+    # separate out the heavy and light chains
+    igblast_results_grouped_H_full <- filter(igblast_results_grouped, str_detect(v_call, "H"))
+    igblast_results_grouped_L_full <- filter(igblast_results_grouped,
+                                             str_detect(v_call, "H", negate = TRUE))
+
+    # sort them in descending order by read count
+    igblast_results_grouped_H_full <- arrange(igblast_results_grouped_H_full, desc(count))
+    igblast_results_grouped_L_full <- arrange(igblast_results_grouped_L_full, desc(count))
+
+    # give each clones H and L chain a unique name in the form of H1, H2, L1, L2 etc where 1 is the most abundant, 2 is the second most abundant etc
+    igblast_results_grouped_H_full[, "group_id"] <- paste0("$meta", "_H", seq_len(nrow(igblast_results_grouped_H_full)))
+    igblast_results_grouped_L_full[, "group_id"] <- paste0("$meta", "_L", seq_len(nrow(igblast_results_grouped_L_full)))
 
     # write out a copy of this table 
+    igblast_results_grouped_full <- bind_rows(igblast_results_grouped_H_full, igblast_results_grouped_L_full)
     write_tsv(igblast_results_grouped_full, "${meta}_pre_consensus_grouped_table.tsv")
 
     # prepare for consensus calling 
     # remove those that have less than 3 counts (can't make a consensus with 1 or 2 reads)
-    igblast_results_grouped_full %>%
-        filter(count >= 3) -> igblast_results_grouped
+    igblast_results_grouped_H_full %>%
+        filter(count >= 3) -> igblast_results_grouped_H
 
-    # separate out the heavy and light chains
-    igblast_results_grouped_H <- filter(igblast_results_grouped, str_detect(v_call, "H"))
-    igblast_results_grouped_L <- filter(igblast_results_grouped,
-                                        str_detect(v_call, "H", negate = TRUE))
-
-    # sort them in descending order by read count
-    igblast_results_grouped_H <- arrange(igblast_results_grouped_H, desc(count))
-    igblast_results_grouped_L <- arrange(igblast_results_grouped_L, desc(count))
+    igblast_results_grouped_L_full %>%
+        filter(count >= 3) -> igblast_results_grouped_L
 
     # select the top n groups, based on the parameter set
     # default value is 999 which should keep all 
@@ -68,10 +76,6 @@ process pre_consensus_groupings {
     if ($num_consensus < nrow(igblast_results_grouped_L)) {
         igblast_results_grouped_L <- igblast_results_grouped_L[1:$num_consensus,]
     }
-
-    # give each clones H and L chain a unique name in the form of H1, H2, L1, L2 etc where 1 is the most abundant, 2 is the second most abundant etc
-    igblast_results_grouped_H[, "group_id"] <- paste0("$meta", "_H", seq_len(nrow(igblast_results_grouped_H)))
-    igblast_results_grouped_L[, "group_id"] <- paste0("$meta", "_L", seq_len(nrow(igblast_results_grouped_L)))
 
     # write out the read names for each clone into a .txt file
     for (i in seq_along(unlist(as.vector(igblast_results_grouped_H[, "group_id"])))) {
@@ -139,15 +143,18 @@ workflow annotation_grouping_pre_consensus {
             organism, 
             igblast_databases, 
             igdata_dir, 
-            igblastdb_dir).airr_table
+            igblastdb_dir,
+            "pre").airr_table
 
         // process this in R
         pre_consensus_groupings(igblast_tsv, num_consensus)
         read_names_for_consensus = pre_consensus_groupings.out.read_names
         starting_points_for_consensus = pre_consensus_groupings.out.starting_points
+        pre_consensus_table = pre_consensus_groupings.out.grouped_table
 
     emit:
         read_names_for_consensus
         starting_points_for_consensus
+        pre_consensus_table
 
 }

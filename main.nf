@@ -18,6 +18,7 @@ organism = params.organism
 trim_3p = params.trim_3p
 trim_5p = params.trim_5p
 num_consensus = params.num_consensus
+medaka_model = params.medaka_model
 
 // TODO: introductory message that prints out parameters
 
@@ -33,6 +34,8 @@ include { cutadapt } from './modules/local/cutadapt'
 include { fastq_to_fasta } from './modules/local/fastq_to_fasta'
 include { annotation_grouping_pre_consensus } from './subworkflows/annotation_grouping_pre_consensus'
 include { take_consensus } from './subworkflows/consensus'
+include { annotation_grouping_post_consensus } from './subworkflows/annotation_grouping_post_consensus'
+
 
 /*
  * Define helper functions
@@ -101,6 +104,7 @@ workflow{
         igdata_dir, 
         igblastdb_dir,
         num_consensus)
+    pre_consensus_table = annotation_grouping_pre_consensus.out.pre_consensus_table
     
     // the .collect(flat: false) doesn't do anything to the output. It just means that the next step (reshaping
     // the channel) won't start until annotation_grouping_pre_consensus is finished running on all samples
@@ -121,12 +125,25 @@ workflow{
     .set{input_for_consensus}
 
     // actually make the consensus 
-    consensus_sequences = take_consensus(input_for_consensus)
+    consensus_sequences = take_consensus(input_for_consensus, medaka_model)
     
     // annotation & grouping/analysis of consensus sequences
-
+    // as input for this, we need the pre-consensus grouped table, as well as the consensus sequences
+    consensus_sequences
+    .map{ it -> [it[0].replaceAll('_[^_]+$', "")] + it }
+    .groupTuple() 
+    .combine(pre_consensus_table, by: 0)
+    .set{final_annotation_files}
+    
+      annotation_grouping_post_consensus(
+        final_annotation_files,
+        organism,
+        igblast_databases,
+        igdata_dir,
+        igblastdb_dir)
+ 
     // make report
 
-    // finished! print some kind of message to user
+    // finished!!! print some kind of message to user
     // also email if they want?
 }

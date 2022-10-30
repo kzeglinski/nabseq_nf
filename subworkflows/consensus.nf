@@ -14,8 +14,7 @@ process prepare_consensus_inputs{
         'quay.io/biocontainers/seqkit:2.3.1--h9ee0642_0' }"
     
     input:
-    tuple val(sample_id), val(sequence_id), path(read_names), 
-    path(starting_point_name), path(trimmed_reads)
+    tuple val(sample_id), val(sequence_id), path(read_names), path(starting_point_name), path(trimmed_reads)
 
     output:
     tuple val(sequence_id), path("${sequence_id}_reads.fastq"), emit: reads
@@ -34,6 +33,7 @@ process prepare_consensus_inputs{
 workflow take_consensus {
     take:
         consensus_input
+        medaka_model
         
     main:
         // use the read name files to make fasta/fastq of the actual reads 
@@ -46,11 +46,9 @@ workflow take_consensus {
         racon(minimap2_alignment.out.for_racon)
 
         // run medaka
-        medaka(racon.out.results)
+        medaka(racon.out.results, medaka_model)
         consensus_sequences = medaka.out.consensus
 
     emit:
         consensus_sequences
-        
-
 }

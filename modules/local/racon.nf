@@ -1,7 +1,7 @@
 // adapted from the nf-core racon module https://github.com/nf-core/modules/blob/master/modules/nf-core/racon/main.nf
 
 process racon {
-    tag "$meta"
+    tag "$sequence_id"
     label 'process_high'
 
     conda (params.enable_conda ? "bioconda::racon=1.4.20" : null)
@@ -10,10 +10,10 @@ process racon {
         'quay.io/biocontainers/racon:1.4.20--h9a82719_1' }"
 
     input:
-    tuple val(meta), path(reads), path(assembly), path(paf)
+    tuple val(sequence_id), path(reads), path(assembly), path(paf)
 
     output:
-    tuple val(meta), path(reads), path('*_racon_consensus.fasta') , emit: results
+    tuple val(sequence_id), path(reads), path('*_racon_consensus.fasta') , emit: results
     path "versions.yml"          , emit: versions
 
     when:
@@ -21,12 +21,13 @@ process racon {
 
     script:
     def args = task.ext.args ?: ''
-    def prefix = task.ext.prefix ?: "${meta}"
+    def prefix = task.ext.prefix ?: "${sequence_id}"
     """
     racon -t "$task.cpus" \\
         "${reads}" \\
         "${paf}" \\
         $args \\
+        -w 5000 -u -g -8 -x -6 -m 8 --no-trimming \\
         "${assembly}" > \\
         ${prefix}_racon_consensus.fasta
 
