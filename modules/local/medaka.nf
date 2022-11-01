@@ -17,7 +17,6 @@ process medaka {
 
     output:
     tuple val(sequence_id), path("*.fasta"), emit: consensus
-    path "versions.yml"             , emit: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -35,9 +34,5 @@ process medaka {
         -o ./
     mv consensus.fasta ${prefix}.fasta
 
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        medaka: \$( medaka --version 2>&1 | sed 's/medaka //g' )
-    END_VERSIONS
     """
 }

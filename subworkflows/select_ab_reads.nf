@@ -5,6 +5,7 @@ include { minimap2_alignment } from '../modules/local/minimap2'
 
 process subset_aligned_reads {
     tag {sample_name}
+    label 'process_medium'
 
     conda (params.enable_conda ? 'bioconda::seqkit=2.3.1' : null)
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
@@ -23,7 +24,7 @@ process subset_aligned_reads {
     cut -f1 $paf_file > "${sample_name}_ab_read_names.txt"
     
     # use these names as a pattern for seqkit grep to find
-    seqkit grep --by-name --use-regexp \
+    seqkit grep --by-name --use-regexp --threads ${task.cpus} \
     -f "${sample_name}_ab_read_names.txt" \
     $reads \
     -o "${sample_name}_ab_reads.fastq"

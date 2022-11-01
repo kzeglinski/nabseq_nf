@@ -36,10 +36,11 @@ process post_consensus_annotation {
     tuple val(meta), path(igblast_output), path(consensus_sequence), path(pre_consensus_table)
 
     output:
-    tuple val(meta), path('*_full_consensus_annotation.tsv'), emit: full_annotation
-    tuple val(meta), path('*_productive_only_consensus_annotation.tsv'), emit: prod_annotation
+    path('*_full_consensus_annotation.tsv'), emit: full_annotation
+    path('*_productive_only_consensus_annotation.tsv'), emit: prod_annotation
 
     script:
+    
     """
     #!/usr/bin/env Rscript
 
@@ -62,7 +63,10 @@ process post_consensus_annotation {
     # remove those that have less than 3 counts (can't make a consensus with 1 or 2 reads)
     igblast_results_with_counts %>%
         filter(productive == TRUE) %>%
-        select(c(group_id, productive, v_call, d_call, j_call, cdr3_aa, v_identity, c_call, count))-> igblast_results_prod_only
+        select(c(group_id, productive, v_call, d_call, j_call, cdr3_aa, v_identity, c_call, count)) %>%
+        ungroup() %>%
+        group_by(v_call, d_call, j_call, cdr3_aa, v_identity, c_call) %>%
+        summarise(group_id = paste0(group_id, collapse = " ,"), count = sum(count)) -> igblast_results_prod_only
     
     write_tsv(igblast_results_prod_only, "${meta}_productive_only_consensus_annotation.tsv")
         

@@ -22,7 +22,6 @@ process cutadapt {
 
     output:
     tuple val(meta), path('*_ab_reads_trimmed.fastq'), emit: reads
-    path "versions.yml"                     , emit: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -40,10 +39,5 @@ process cutadapt {
         -m 300 \\
         -o "${meta}_ab_reads_trimmed.fastq" \\
         $reads
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        cutadapt: \$(cutadapt --version)
-    END_VERSIONS
     """
 }

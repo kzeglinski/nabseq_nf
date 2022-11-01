@@ -6,7 +6,7 @@ include { minimap2_alignment } from '../modules/local/minimap2'
 
 process prepare_consensus_inputs{
     tag "$sequence_id"
-    label 'process_low'
+    label 'process_medium'
 
     conda (params.enable_conda ? 'bioconda::seqkit=2.3.1' : null)
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
@@ -23,10 +23,10 @@ process prepare_consensus_inputs{
     script:
     """
     # extract the reads
-    seqkit grep -n -r -f $read_names $trimmed_reads | seqkit replace -p "\\_.*" -r "" | seqkit rename > "${sequence_id}_reads.fastq"
+    seqkit grep --threads ${task.cpus} -n -r -f $read_names $trimmed_reads | seqkit replace -p "\\_.*" -r "" | seqkit rename > "${sequence_id}_reads.fastq"
 
     # extract starting copy
-    seqkit grep -n -r -f $starting_point_name $trimmed_reads | seqkit replace -p ".*" -r $sequence_id > "${sequence_id}_starting_point.fastq"
+    seqkit grep --threads ${task.cpus} -n -r -f $starting_point_name $trimmed_reads | seqkit replace -p ".*" -r $sequence_id > "${sequence_id}_starting_point.fastq"
     """
 }
 

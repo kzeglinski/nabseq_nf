@@ -17,7 +17,6 @@ process nanocomp {
     path("*.png") , emit: png
     path("*.txt") , emit: txt
     path("*.log") , emit: log
-    path  "versions.yml"           , emit: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -30,9 +29,6 @@ process nanocomp {
         $args \\
         -t $task.cpus \\
         --fastq $ontfile
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        nanocomp: \$(echo \$(NanoPlot --version 2>&1) | sed 's/^.*NanoPlot //; s/ .*\$//')
-    END_VERSIONS
+
     """
 }

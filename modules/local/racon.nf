@@ -14,7 +14,6 @@ process racon {
 
     output:
     tuple val(sequence_id), path(reads), path('*_racon_consensus.fasta') , emit: results
-    path "versions.yml"          , emit: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -31,9 +30,5 @@ process racon {
         "${assembly}" > \\
         ${prefix}_racon_consensus.fasta
 
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        racon: \$( racon --version 2>&1 | sed 's/^.*v//' )
-    END_VERSIONS
     """
 }

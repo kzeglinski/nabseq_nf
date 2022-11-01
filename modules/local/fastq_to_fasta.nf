@@ -1,6 +1,7 @@
 // convert fastq to fasta (needed for IgBLAST)
 process fastq_to_fasta {
     tag {sample_name}
+    label 'process_medium'
 
     conda (params.enable_conda ? 'bioconda::seqkit=2.3.1' : null)
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
@@ -15,7 +16,7 @@ process fastq_to_fasta {
 
     script:
     """
-    seqkit fq2fa $reads -o "${sample_name}_ab_reads_trimmed.fasta"
+    seqkit fq2fa --threads $task.cpus $reads -o "${sample_name}_ab_reads_trimmed.fasta"
     """
 
 }

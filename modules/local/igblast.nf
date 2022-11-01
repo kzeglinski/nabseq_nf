@@ -2,7 +2,7 @@
 // general layout is based on the nf-core modules
 process igblast {
     tag "$meta"
-    label 'process_medium'
+    label 'process_high'
 
     conda (params.enable_conda ? 'bioconda::igblast=1.19.0' : null)
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
@@ -35,6 +35,7 @@ process igblast {
         -c_region_db ${igblast_databases}/databases/imgt_${organism}_C \
         -organism $organism \
         -query $reads \
+        -num_threads $task.cpus \
         -auxiliary_data ${igblast_databases}/igdata/optional_file/${organism}_gl.aux \
         -show_translation \
         -num_alignments_V 1 -num_alignments_D 1 -num_alignments_J 1 -num_alignments_C 1 \

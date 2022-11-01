@@ -3,8 +3,8 @@
 process concat_reads {
 
     tag { sample_name }
-
-    publishDir "${params.out_dir}/concat_reads", mode: 'copy'
+    label 'process_low'
+    publishDir "${params.out_dir}/concat_reads", mode: 'copy', failOnError: true
 
     input:
     tuple val(sample_name), path(fastq_files)

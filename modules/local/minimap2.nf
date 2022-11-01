@@ -20,7 +20,6 @@ process minimap2_alignment {
     output:
     tuple val(meta), path("*.paf"), path(reads), optional: true, emit: paf_reads
     tuple val(meta), path(reads), path(reference), path("*.paf"), optional: true, emit: for_racon
-    path "versions.yml"           , emit: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -39,10 +38,5 @@ process minimap2_alignment {
         "$reads" \\
         -o ${prefix}.paf
 
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        minimap2: \$(minimap2 --version 2>&1)
-    END_VERSIONS
     """
 }
