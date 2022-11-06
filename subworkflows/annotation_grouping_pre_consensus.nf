@@ -52,8 +52,8 @@ process pre_consensus_groupings {
     igblast_results_grouped_L_full <- arrange(igblast_results_grouped_L_full, desc(count))
 
     # give each clones H and L chain a unique name in the form of H1, H2, L1, L2 etc where 1 is the most abundant, 2 is the second most abundant etc
-    igblast_results_grouped_H_full[, "group_id"] <- paste0("$meta", "_H", seq_len(nrow(igblast_results_grouped_H_full)))
-    igblast_results_grouped_L_full[, "group_id"] <- paste0("$meta", "_L", seq_len(nrow(igblast_results_grouped_L_full)))
+    igblast_results_grouped_H_full[, "group_id"] <- paste0("$meta", "_H", seq_len(nrow(igblast_results_grouped_H_full)), "_count_", as.character(unlist(as.vector(igblast_results_grouped_H_full[, "count"]))))
+    igblast_results_grouped_L_full[, "group_id"] <- paste0("$meta", "_L", seq_len(nrow(igblast_results_grouped_L_full)), "_count_", as.character(unlist(as.vector(igblast_results_grouped_L_full[, "count"]))))
 
     # write out a copy of this table 
     igblast_results_grouped_full <- bind_rows(igblast_results_grouped_H_full, igblast_results_grouped_L_full)

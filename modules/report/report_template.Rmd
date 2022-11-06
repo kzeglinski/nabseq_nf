@@ -127,10 +127,15 @@ chain sequences `NAb-seq` has identified in each cell.
 
 <details><summary>How do I interpret these results?</summary>
 
-It is recommended that the reads used to run `NAb-seq` are basedcalled with the
-super high accuracy model, which has a Q score cutoff of 10 (~90% accuracy). If
-you have a lot of reads below this cutoff, the consensus sequences may still 
-contain some errors (usually indels in homopolymer regions).
+Generally, there will be a light and heavy chain that are significantly more abundant than any others. 
+These can be considered the representative heavy and light chain sequences for the cell. Other sequences
+may result from sequencing or PCR errors, PCR chimeras between different antibody transcripts and leaky
+transcription from the second allele. It is also not uncommon for hybridomas to express multiple productive
+heavy and light chains per cell (see [this paper](https://pubmed.ncbi.nlm.nih.gov/29485921/)).
+
+If you don't see a heavy or light chain sequence for your cell, it is likely that your sequencing 
+coverage was insuficient to generate a productive consensus sequence or that you didn't basecall
+in super-high accuracy mode.
 
 </details>  
 <br /><br />
@@ -142,6 +147,7 @@ for (i in seq_along(samples)) {
   cat("Annotation of productive sequences only:")
   this_sample_file <- paste0(this_sample, "_productive_only_consensus_annotation.tsv")
   this_sample_data <- read.delim(this_sample_file, sep = "\t", header = TRUE)
+  this_sample_data <- this_sample_data[order(-this_sample_data$count),]
   cat(print(knitr::kable(
   this_sample_data
   )))

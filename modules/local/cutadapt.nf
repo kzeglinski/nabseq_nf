@@ -1,9 +1,9 @@
 // this workflow trims the 3p and 5p ends of reads (by default, polyA and polyT but you can specify your own)
 // adapted from the nf-core module https://github.com/nf-core/modules/tree/master/modules/nf-core/cutadapt
 
-// have updated the trimming strategy a bit to account for (1) forgetting to trim adapters/barcodes
-// and (2) those weird cases where polyT and polyA appear in the middle of a read. might be a little
-// aggressive but i guess thats better than the consensus sequences being cooked 
+// have updated the trimming strategy a bit to also re-orient the reads. This shouldn't have been a problem
+// but sometimes it was creating some really cooked consensus sequences with constant regions at both ends
+// re-orienting seems to have fixed this problem
 
 
 process cutadapt {
@@ -28,15 +28,20 @@ process cutadapt {
 
     script:
     def args = task.ext.args ?: ''
+    def trim_pattern = "-a ${trim_3p}"
+    if (!trim_5p.isEmpty()) {
+        trim_pattern = trim_pattern.concat(" -g ${trim_5p}")
+    }
 
     """
     cutadapt \\
         --cores $task.cpus \\
         $args \\
-        -a $trim_3p \\
-        -g $trim_5p \\
-        -n 4 \\
+        $trim_pattern \\
+        --discard-untrimmed \\
+        -n 2 \\
         -m 300 \\
+        --revcomp \\
         -o "${meta}_ab_reads_trimmed.fastq" \\
         $reads
     """

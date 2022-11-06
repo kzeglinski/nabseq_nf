@@ -26,7 +26,7 @@ process racon {
         "${reads}" \\
         "${paf}" \\
         $args \\
-        -w 5000 -u -g -8 -x -6 -m 8 --no-trimming \\
+        -w 5000 -u -g -8 -x -6 -m 8 \\
         "${assembly}" > \\
         ${prefix}_racon_consensus.fasta
 

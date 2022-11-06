@@ -20,7 +20,7 @@ log.info """
 ##   ### ##     ## ##     ##         ##    ## ##       ##    ##  
 ##    ## ##     ## ########           ######  ########  ##### ## 
 
-====================================================
+================================================================
 Usage: nextflow run ./nabseq_nf/main.nf --fastq_dir [input path] --organism [organism name] --sample_sheet [sample sheet]
 --help                : prints this help message
 
@@ -68,7 +68,7 @@ log.info """
 ##   ### ##     ## ##     ##         ##    ## ##       ##    ##  
 ##    ## ##     ## ########           ######  ########  ##### ## 
 
-====================================================
+================================================================
 read directory              : ${params.fastq_dir}
 number of consensus seqs    : ${params.num_consensus}
 organism                    : ${params.organism}
@@ -85,7 +85,7 @@ report_title                : ${params.report_title}
 include { parse_sample_sheet } from './subworkflows/file_import'
 include { nanocomp } from './modules/local/nanocomp' 
 include { select_ab_reads } from './subworkflows/select_ab_reads'
-include { cutadapt } from './modules/local/cutadapt'
+include { read_trimming } from './subworkflows/read_trimming'
 include { fastq_to_fasta } from './modules/local/fastq_to_fasta'
 include { annotation_grouping_pre_consensus } from './subworkflows/annotation_grouping_pre_consensus'
 include { take_consensus } from './subworkflows/consensus'
@@ -111,15 +111,17 @@ def reshape_channel_for_consensus (input_channel, file_ending) {
             def id_2 = items[1].toString().replaceAll('.*/{1}', '').replaceAll(file_ending, "")
             id_1 == id_2
             }
+
     .filter { items -> // remove the pairs that are like [ID, ID] instead of [ID, file] or [file, ID]
             def id_1 = items[0]
             def id_2 = items[1]
             id_1 != id_2
             }
+
     .filter { items -> // currently we have [ID, file] and [file, ID] but we only need one of them
             def id_1 = items[0].toString()
             !id_1.endsWith(".txt") // remove [file, ID] so we're just left with [ID, file]
-            }
+            } 
 }
 
 // from https://stackoverflow.com/questions/27868047/groovy-way-to-pair-each-element-in-a-list
@@ -148,8 +150,8 @@ workflow{
     if( !all_ab_reference_file.exists() ) exit 1, "The reference file ${all_ab_reference_file} can't be found."
     ab_reads = select_ab_reads(concatenated_files, all_ab_reference_file)
     
-    // trim the 3' and 5' ends (by default polyA tail, user can specify if they have primers)
-    trimmed_reads = cutadapt(ab_reads, trim_3p, trim_5p).reads    
+    // trim the ends (by default polyA tail, user can specify if they have primers)
+    trimmed_reads = read_trimming(ab_reads, trim_3p, trim_5p).trimmed_reads_renamed    
 
     // annotation and grouping
     trimmed_read_fasta = fastq_to_fasta(trimmed_reads) //IgBLAST needs fasta not fastq
@@ -176,21 +178,20 @@ workflow{
 
     reshaped_read_names
     .join(reshaped_starting_points)
-    .map{ it -> [it[0].replaceAll('_[^_]+$', "")] + it} // add sample ID to list
+    .map{ it -> [it[0].replaceAll('_[^_]*_(.*)', "")] + it} // add sample ID to list
     .combine(trimmed_reads, by: 0) // add trimmed reads to list
     .set{input_for_consensus}
 
-    // actually make the consensus 
+     // actually make the consensus 
     consensus_sequences = take_consensus(input_for_consensus, medaka_model)
     
     // annotation & grouping/analysis of consensus sequences
     // as input for this, we need the pre-consensus grouped table, as well as the consensus sequences
     consensus_sequences
-    .map{ it -> [it[0].replaceAll('_[^_]+$', "")] + it }
+    .map{ it -> [it[0].replaceAll('_[^_]*_(.*)', "")] + it }
     .groupTuple() 
-    .combine(pre_consensus_table, by: 0)
     .set{final_annotation_files}
-    
+
     annotation_grouping_post_consensus(
         final_annotation_files,
         organism,
@@ -201,7 +202,6 @@ workflow{
     productive_only_annotation = annotation_grouping_post_consensus.out.only_productive_sequences.collect()
     full_annotation = annotation_grouping_post_consensus.out.all_annotated_sequences.collect()
 
-    
     // make report
     report_template = Channel.fromPath(params.report_template)
     css_file = Channel.fromPath(params.css_file)
@@ -226,6 +226,4 @@ workflow{
         logo
     )
 
-    // finished!!! print some kind of message to user
-    // also email if they want?
 }

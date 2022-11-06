@@ -10,10 +10,10 @@ process cat_all_abs{
     publishDir "${params.out_dir}/consensus_annotation", mode: 'copy', pattern: "*.tsv"
 
     input:
-    tuple val(sample_id), val(sequence_ids), path(consensus_sequences), path(pre_consensus_table)
+    tuple val(sample_id), val(sequence_ids), path(consensus_sequences)
 
     output:
-    tuple val(sample_id), path("*_all_consensus_sequences.fasta"), path(pre_consensus_table)
+    tuple val(sample_id), path("*_all_consensus_sequences.fasta")
 
     script:
 
@@ -33,7 +33,7 @@ process post_consensus_annotation {
         'quay.io/biocontainers/r-tidyverse:1.2.1' }"
 
     input:
-    tuple val(meta), path(igblast_output), path(consensus_sequence), path(pre_consensus_table)
+    tuple val(meta), path(igblast_output)
 
     output:
     path('*_full_consensus_annotation.tsv'), emit: full_annotation
@@ -49,12 +49,12 @@ process post_consensus_annotation {
     # read in the igblast output
     igblast_results <- read.delim(file = "${igblast_output}", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
 
-    # also read in the pre-consensus table (since this has the counts)
-    pre_consensus_igblast <- read.delim(file = "${pre_consensus_table}", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
-
-    pre_consensus_igblast %>%
-        select(c(count, group_id)) %>%
-        right_join(igblast_results, by = c("group_id" = "sequence_id")) -> igblast_results_with_counts
+    # separate out the counts from the name
+    igblast_results %>% 
+        extract(sequence_id, into = c("sequence_id", "count"), "(.*)_([^_]+)\$") %>%
+        mutate(group_id = gsub('_count', '', sequence_id), .before = count) %>%
+        arrange(desc(count)) %>%
+        select(-sequence_id) -> igblast_results_with_counts
 
     # write out a copy of this table 
     write_tsv(igblast_results_with_counts, "${meta}_full_consensus_annotation.tsv")
@@ -63,10 +63,10 @@ process post_consensus_annotation {
     # remove those that have less than 3 counts (can't make a consensus with 1 or 2 reads)
     igblast_results_with_counts %>%
         filter(productive == TRUE) %>%
-        select(c(group_id, productive, v_call, d_call, j_call, cdr3_aa, v_identity, c_call, count)) %>%
+        select(c(group_id, count, productive, v_call, d_call, j_call, cdr3_aa, v_identity, c_call)) %>%
         ungroup() %>%
         group_by(v_call, d_call, j_call, cdr3_aa, v_identity, c_call) %>%
-        summarise(group_id = paste0(group_id, collapse = " ,"), count = sum(count)) -> igblast_results_prod_only
+        summarise(group_id = paste0(group_id, collapse = ", "), count = sum(as.numeric(count))) -> igblast_results_prod_only
     
     write_tsv(igblast_results_prod_only, "${meta}_productive_only_consensus_annotation.tsv")
         
@@ -84,24 +84,18 @@ workflow annotation_grouping_post_consensus {
     main:
         // cat all consensus sequences from the same sample
         concatenated_sequences = cat_all_abs(final_annotation_files)
-        concatenated_sequences.map{it -> it.take(2)}.set{igblast_input} // don't want to give the .tsv to igblast
 
         // annotate reads using igblast
         igblast_tsv = igblast(
-            igblast_input, 
+            concatenated_sequences, 
             organism, 
             igblast_databases, 
             igdata_dir, 
             igblastdb_dir,
             "post").airr_table
         
-        // add on the pre-consensus table so we can do the final analysis in R
-        igblast_tsv
-        .combine(concatenated_sequences, by: 0)
-        .set{for_final_processing}
-
         // process this in R
-        post_consensus_annotation(for_final_processing)
+        post_consensus_annotation(igblast_tsv)
         all_annotated_sequences = post_consensus_annotation.out.full_annotation
         only_productive_sequences = post_consensus_annotation.out.prod_annotation
 
