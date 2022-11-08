@@ -7,7 +7,7 @@ cell lines and single B cells.
 * The [NAb-seq manuscript](https://www.tandfonline.com/doi/full/10.1080/19420862.2022.2106621)
 * The [NAb-seq documentation website](https://kzeglinski.github.io/nab-seq/index.html)
 * The [original version of NAb-seq](https://github.com/kzeglinski/nabseq_old)
-* The [data from the NAb-seq manuscript]() 
+* The [data from the NAb-seq manuscript](https://www.ebi.ac.uk/ena/browser/view/PRJEB51442?show=reads) 
 
 # Usage
 ```
