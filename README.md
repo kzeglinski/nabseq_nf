@@ -40,6 +40,5 @@ NAb-seq requires as input:
 
 ## Output
 NABseq will produce a report containing sample/run information, QC metrics and the annotation results of productive sequences from all samples. All consensus sequences in FASTA format, as well as intermediate files (NanoComp QC results, IgBLAST results) are written to the results directory also
-For more detailed usage information, please see the [documentation](https://kzeglinski.github.io/nab-seq/index.html)
 
 
