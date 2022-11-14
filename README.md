@@ -25,7 +25,7 @@ Optional (only needed for advanced users)
 --igblast_databases   : location of the igblast databases (default: "$projectDir/references/igblast/")
 --reference_sequences : location of the reference sequences (default: "$projectDir/references/reference_sequences/")
 --trim_3p             : pattern for cutadapt to trim off the 3' end (default: "A{20}N{90}")
---trim_5p             : pattern for cutadapt to trim off the 5' end (default: "N{90}T{20}")
+--trim_5p             : pattern for cutadapt to trim off the 5' end (default: "")
 --medaka_model        : model to use for medaka (depends on your basecalling model, default:"r941_min_sup_g507")
 --report_title        : title to use for naming the report (default: "NAb-seq report")
 ```

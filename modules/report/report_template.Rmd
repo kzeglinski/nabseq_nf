@@ -47,7 +47,8 @@ sample_sheet <- read.delim(file = params$sample_sheet, sep = ",",
                            header = FALSE)
 knitr::kable(
   sample_sheet,
-  col.names = c('Barcode', 'Sample Name')
+  col.names = c('Barcode', 'Sample Name'),
+  row.names=FALSE
 )
 ```
 <br /><br />
@@ -68,7 +69,8 @@ samples <- sample_sheet[, 2]
 
 knitr::kable(
   nanocomp_summary,
-  col.names = c("Stats", as.character(samples))
+  col.names = c("Stats", as.character(samples)),
+  row.names=FALSE
 )
 ```
 <br /><br />
@@ -112,7 +114,7 @@ knitr::include_graphics("NanoComp_quals_violin.png")
 
 <details><summary>How do I interpret this result?</summary>
 
-It is recommended that the reads used to run `NAb-seq` are basedcalled with the
+It is recommended that the reads used to run `NAb-seq` are basecalled with the
 super high accuracy model, which has a Q score cutoff of 10 (~90% accuracy). If
 you have a lot of reads below this cutoff, the consensus sequences may still 
 contain some errors (usually indels in homopolymer regions).
@@ -149,7 +151,7 @@ for (i in seq_along(samples)) {
   this_sample_data <- read.delim(this_sample_file, sep = "\t", header = TRUE)
   this_sample_data <- this_sample_data[order(-this_sample_data$count),]
   cat(print(knitr::kable(
-  this_sample_data
+  this_sample_data, row.names=FALSE
   )))
   cat("  \n <br /><br /> \n")
 }
