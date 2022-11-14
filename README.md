@@ -7,9 +7,10 @@ cell lines and single B cells.
 * The [NAb-seq manuscript](https://www.tandfonline.com/doi/full/10.1080/19420862.2022.2106621)
 * The [NAb-seq documentation website](https://kzeglinski.github.io/nab-seq/index.html)
 * The [original version of NAb-seq](https://github.com/kzeglinski/nabseq_old)
-* The [data from the NAb-seq manuscript]() 
+* The [data from the NAb-seq manuscript](https://www.ebi.ac.uk/ena/browser/view/PRJEB51442?show=reads) 
 
 # Usage
+Also see the [documentation](https://kzeglinski.github.io/nab-seq/index.html) for more usage information
 ```
 Usage: nextflow run ./nabseq_nf/main.nf --fastq_dir [input path] --organism [organism name] --sample_sheet [sample sheet]
 --help                : prints this help message
@@ -30,5 +31,14 @@ Optional (only needed for advanced users)
 --report_title        : title to use for naming the report (default: "NAb-seq report")
 ```
 
+## Input
+NAb-seq requires as input:
+* The path of a directory where it should write the results
+* The path of the directory containing the basecalled and demultiplexed nanopore reads
+* The name of the organism whose reference sequences should be used (rat and mouse are built-in, and you can create custom references for any organism you like 
+* A sample sheet (CSV) in the format: barcode01,sample_x
+
+## Output
+NABseq will produce a report containing sample/run information, QC metrics and the annotation results of productive sequences from all samples. All consensus sequences in FASTA format, as well as intermediate files (NanoComp QC results, IgBLAST results) are written to the results directory also
 
 
