@@ -107,10 +107,13 @@ process pre_consensus_groupings {
     # get nucleotide sequence from original table
     # join them, remove those rows that don't belong to a group and determine read length
     # finally, just choose the longest reads for each group
+    # EDIT: [21/12/22] we actually need to choose the longest read that also has a complete VDJ
+    # otherwise we risk outputting a truncated consensus sequence
     igblast_results %>%
-        select(c(sequence_id, sequence)) %>%
+        select(c(sequence_id, sequence, complete_vdj)) %>%
         left_join(igblast_results_grouped_long, by = c("sequence_id" = "reads")) %>%
         filter(!is.na(group_id)) %>%
+        filter(complete_vdj == TRUE) %>%
         mutate(read_length = nchar(sequence)) %>%
         select(-c(sequence)) %>%
         group_by(group_id) %>% 
