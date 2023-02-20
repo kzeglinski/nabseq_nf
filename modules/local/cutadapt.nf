@@ -7,7 +7,7 @@
 
 
 process cutadapt {
-    tag "$meta"
+    tag "$prefix"
     label 'process_medium'
 
     conda (params.enable_conda ? 'bioconda::cutadapt=3.4' : null)
@@ -33,6 +33,13 @@ process cutadapt {
         trim_pattern = trim_pattern.concat(" -g ${trim_5p}")
     }
 
+    // allow for a bunch of metadata (although the first element should be sample name)
+    if(meta instanceof Collection) {
+        prefix = meta[0]
+    } else {
+        prefix = meta
+    }
+
     """
     cutadapt \\
         --cores $task.cpus \\
@@ -42,7 +49,7 @@ process cutadapt {
         -n 2 \\
         -m 300 \\
         --revcomp \\
-        -o "${meta}_ab_reads_trimmed.fastq" \\
+        -o "${prefix}_ab_reads_trimmed.fastq" \\
         $reads
     """
 }

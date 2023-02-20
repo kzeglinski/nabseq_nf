@@ -7,10 +7,10 @@ process concat_reads {
     publishDir "${params.out_dir}/concat_reads", mode: 'copy', failOnError: true
 
     input:
-    tuple val(sample_name), path(fastq_files)
+    tuple val(sample_name), path(fastq_files), val(species), val(report_group)
 
     output:
-    tuple val(sample_name), path("${sample_name}.${extn}")
+    tuple val(sample_name), path("${sample_name}.${extn}"), val(species), val(report_group)
 
     script:
     if( fastq_files.every { it.name.endsWith('.fastq.gz') } )
@@ -32,19 +32,21 @@ workflow parse_sample_sheet {
     
     main:
         fastq_extns = [ '.fastq', '.fastq.gz' ]
+
         Channel.fromPath(sample_sheet)
-            |splitCsv()
-            | map { dir, sample_name ->
-                full_path = fastq_dir + "/" + dir // prepend the directory our barcoded directories live in
+            | splitCsv(header: true)
+            | map{row ->
+                full_path = fastq_dir + "/" + "${row.barcode}"
                 all_files = file(full_path).listFiles()
                 fastq_files = all_files.findAll { fn ->
                     fastq_extns.find { fn.name.endsWith( it ) }
                 }
-                tuple( sample_name, fastq_files )
+                tuple(row.sample_name, fastq_files, row.species, row.report_group)
             }
+
             | concat_reads
-            | set{concatenated_file_tuple}
-    
+            | set{concatenated_file_tuple} 
+ 
     emit:
         concatenated_file_tuple
 

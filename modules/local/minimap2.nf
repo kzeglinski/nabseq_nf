@@ -5,7 +5,7 @@
 // idk why 
 
 process minimap2_alignment {
-    tag "$meta"
+    tag "$prefix"
     label 'process_high'
 
     conda (params.enable_conda ? 'bioconda::minimap2=2.24' : null)
@@ -26,7 +26,13 @@ process minimap2_alignment {
 
     script:
     def args = task.ext.args ?: ''
-    def prefix = task.ext.prefix ?: "${meta}"
+    
+    // allow for a bunch of metadata (although the first element should be sample name)
+    if(meta instanceof Collection) {
+        prefix = meta[0]
+    } else {
+        prefix = meta
+    }
 
     """
     minimap2 \\

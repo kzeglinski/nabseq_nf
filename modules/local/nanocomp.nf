@@ -1,6 +1,6 @@
 //adapted from the nf-core NanoPlot module https://nf-co.re/modules/nanoplot
 process nanocomp {
-    tag "nanocomp_on_all_reads"
+    tag "$sample_name"
     label 'process_low'
     publishDir "${params.out_dir}/nanocomp", mode: 'copy'
 
@@ -10,13 +10,13 @@ process nanocomp {
         'quay.io/biocontainers/nanocomp:1.19.3--pyhdfd78af_0' }"
 
     input:
-    path(ontfile)
+    tuple val(sample_name), file(fastq_files), val(species), val(report_group)
 
     output:
-    path("*.html"), emit: html
-    path("*.png") , emit: png
-    path("*.txt") , emit: txt
-    path("*.log") , emit: log
+    tuple val(sample_name), val(species), val(report_group), path("*.html"), emit: html
+    tuple val(sample_name), val(species), val(report_group), path("*.png") , emit: png
+    tuple val(sample_name), val(species), val(report_group), path("*.txt") , emit: txt
+    tuple val(sample_name), val(species), val(report_group), path("*.log") , emit: log
 
     when:
     task.ext.when == null || task.ext.when
@@ -28,7 +28,8 @@ process nanocomp {
     NanoComp \\
         $args \\
         -t $task.cpus \\
-        --fastq $ontfile
+        --fastq $fastq_files \\
+        --prefix "report_${report_group}_"
 
     """
 }

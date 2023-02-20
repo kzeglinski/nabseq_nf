@@ -4,7 +4,7 @@
 include { minimap2_alignment } from '../modules/local/minimap2' 
 
 process subset_aligned_reads {
-    tag {sample_name}
+    tag {prefix}
     label 'process_medium'
 
     conda (params.enable_conda ? 'bioconda::seqkit=2.3.1' : null)
@@ -13,37 +13,54 @@ process subset_aligned_reads {
         'quay.io/biocontainers/seqkit:2.3.1--h9ee0642_0' }"
 
     input:
-    tuple val(sample_name), path(paf_file), path(reads)
+    tuple val(meta), path(paf_file), path(reads)
 
     output:
-    tuple val(sample_name), path("${sample_name}_ab_reads.fastq")
+    tuple val(meta), path("*_ab_reads.fastq")
 
     script:
+
+    // allow for a bunch of metadata (although the first element should be sample name)
+    if(meta instanceof Collection) {
+        prefix = meta[0]
+    } else {
+        prefix = meta
+    }
+
     """
     # aligned read names are the first column of the PAF file
-    cut -f1 $paf_file > "${sample_name}_ab_read_names.txt"
+    cut -f1 $paf_file > "${prefix}_ab_read_names.txt"
     
     # use these names as a pattern for seqkit grep to find
     seqkit grep --by-name --use-regexp --threads ${task.cpus} \
-    -f "${sample_name}_ab_read_names.txt" \
+    -f "${prefix}_ab_read_names.txt" \
     $reads \
-    -o "${sample_name}_ab_reads.fastq"
+    -o "${prefix}_ab_reads.fastq"
     """
 
 }
 
 workflow select_ab_reads {
     take:
-        concatenated_files
-        reference_sequence
+        ab_selection_input
     
     main:
+        // split input into reads + meta data and then reference file
+        ab_selection_input
+            .map{it[-1]}
+            .set{reference}
+
+        ab_selection_input
+            .map{it[0..-2]}
+            .map{tuple([it[0], it[2], it[3]], it[1])}
+            .set{minimap2_input}
+
         // align reads using minimap2
-        minimap2_alignment(concatenated_files, reference_sequence)
+        minimap2_alignment(minimap2_input, reference)
 
         // subset the aligned reads using seqkit
         ab_reads = subset_aligned_reads(minimap2_alignment.out.paf_reads)
-
+        
     emit:
         ab_reads
 

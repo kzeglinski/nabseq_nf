@@ -3,7 +3,7 @@
 include { cutadapt } from '../modules/local/cutadapt'
 
 process rename_cutadapt_output {
-    tag "$sample_id"
+    tag "$prefix"
     label 'process_medium'
 
     conda (params.enable_conda ? 'bioconda::seqkit=2.3.1' : null)
@@ -12,15 +12,22 @@ process rename_cutadapt_output {
         'quay.io/biocontainers/seqkit:2.3.1--h9ee0642_0' }"
     
     input:
-    tuple val(sample_id), path(reads)
+    tuple val(meta), path(reads)
 
     output:
-    tuple val(sample_id), path('*_ab_reads_trimmed_renamed.fastq'), emit: reads
+    tuple val(meta), path('*_ab_reads_trimmed_renamed.fastq'), emit: reads
 
     script:
+    // allow for a bunch of metadata (although the first element should be sample name)
+    if(meta instanceof Collection) {
+        prefix = meta[0]
+    } else {
+        prefix = meta
+    }
+
     """
     # extract the reads
-    seqkit replace -p " rc" -r "" $reads > "${sample_id}_ab_reads_trimmed_renamed.fastq"
+    seqkit replace -p " rc" -r "" $reads > "${prefix}_ab_reads_trimmed_renamed.fastq"
 
     """
 }

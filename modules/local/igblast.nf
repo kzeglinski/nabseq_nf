@@ -1,7 +1,7 @@
 // module for running IgBLAST
 // general layout is based on the nf-core modules
 process igblast {
-    tag "$meta"
+    tag "$prefix"
     label 'process_high'
 
     conda (params.enable_conda ? 'bioconda::igblast=1.19.0' : null)
@@ -11,7 +11,6 @@ process igblast {
     
     input:
     tuple val(meta), path(reads)
-    val organism
     val igblast_databases
     env IGDATA
     env IGBLASTDB
@@ -26,6 +25,13 @@ process igblast {
     script:
     def args = task.ext.args ?: ''
 
+    // allow for a bunch of metadata (although the first element should be sample name)
+    if(meta instanceof Collection) {
+        prefix = meta[0]
+        organism = meta[1]
+    } else {
+        error "Please ensure the organism is specified correctly in the sample sheet"
+    }
     """
     # run igblast
     # outfmt 19 = AIRR format (tsv, easy to use in downstream steps)
@@ -39,6 +45,6 @@ process igblast {
         -auxiliary_data ${igblast_databases}/igdata/optional_file/${organism}_gl.aux \
         -show_translation \
         -num_alignments_V 1 -num_alignments_D 1 -num_alignments_J 1 -num_alignments_C 1 \
-        -outfmt 19 > ${meta}_${pre_post}_consensus_igblast.tsv
+        -outfmt 19 > ${prefix}_${pre_post}_consensus_igblast.tsv
     """
 }

@@ -5,25 +5,31 @@
 include { igblast } from '../modules/local/igblast' 
 
 process cat_all_abs{
-    tag "$sample_id"
+    tag "$prefix"
     label 'process_low'
     publishDir "${params.out_dir}/consensus_annotation", mode: 'copy', pattern: "*.tsv"
 
     input:
-    tuple val(sample_id), val(sequence_ids), path(consensus_sequences)
+    tuple val(meta), val(sequence_ids), path(consensus_sequences)
 
     output:
-    tuple val(sample_id), path("*_all_consensus_sequences.fasta")
+    tuple val(meta), path("*_all_consensus_sequences.fasta")
 
     script:
+    // allow for a bunch of metadata (although the first element should be sample name)
+    if(meta instanceof Collection) {
+        prefix = meta[0]
+    } else {
+        prefix = meta
+    }
 
     """
-    cat $consensus_sequences > "${sample_id}_all_consensus_sequences.fasta"
+    cat $consensus_sequences > "${prefix}_all_consensus_sequences.fasta"
     """
 }
 
 process post_consensus_annotation {
-    tag "$meta"
+    tag "$prefix"
     label 'process_low'
     publishDir "${params.out_dir}/consensus_annotation", mode: 'copy', pattern: "*.tsv"
 
@@ -36,10 +42,16 @@ process post_consensus_annotation {
     tuple val(meta), path(igblast_output)
 
     output:
-    path('*_full_consensus_annotation.tsv'), emit: full_annotation
-    path('*_productive_only_consensus_annotation.tsv'), emit: prod_annotation
+    tuple val(meta), path('*_full_consensus_annotation.tsv'), emit: full_annotation
+    tuple val(meta), path('*_productive_only_consensus_annotation.tsv'), emit: prod_annotation
 
     script:
+    // allow for a bunch of metadata (although the first element should be sample name)
+    if(meta instanceof Collection) {
+        prefix = meta[0]
+    } else {
+        prefix = meta
+    }
     
     """
     #!/usr/bin/env Rscript
@@ -57,7 +69,7 @@ process post_consensus_annotation {
         select(-sequence_id) -> igblast_results_with_counts
 
     # write out a copy of this table 
-    write_tsv(igblast_results_with_counts, "${meta}_full_consensus_annotation.tsv")
+    write_tsv(igblast_results_with_counts, "${prefix}_full_consensus_annotation.tsv")
 
     # just productive ones
     # remove those that have less than 3 counts (can't make a consensus with 1 or 2 reads)
@@ -68,7 +80,7 @@ process post_consensus_annotation {
         group_by(v_call, d_call, j_call, cdr3_aa, v_identity, c_call) %>%
         summarise(group_id = paste0(group_id, collapse = ", "), count = sum(as.numeric(count))) -> igblast_results_prod_only
     
-    write_tsv(igblast_results_prod_only, "${meta}_productive_only_consensus_annotation.tsv")
+    write_tsv(igblast_results_prod_only, "${prefix}_productive_only_consensus_annotation.tsv")
         
     """
 }
@@ -76,19 +88,19 @@ process post_consensus_annotation {
 workflow annotation_grouping_post_consensus {
     take:
         final_annotation_files
-        organism
         igblast_databases
-        igdata_dir
-        igblastdb_dir
         
     main:
         // cat all consensus sequences from the same sample
         concatenated_sequences = cat_all_abs(final_annotation_files)
 
+        // set up environment variables
+        igdata_dir="${igblast_databases}/igdata/"
+        igblastdb_dir="${igblast_databases}/databases/"
+
         // annotate reads using igblast
         igblast_tsv = igblast(
             concatenated_sequences, 
-            organism, 
             igblast_databases, 
             igdata_dir, 
             igblastdb_dir,
@@ -96,6 +108,8 @@ workflow annotation_grouping_post_consensus {
         
         // process this in R
         post_consensus_annotation(igblast_tsv)
+
+        // prepare output files
         all_annotated_sequences = post_consensus_annotation.out.full_annotation
         only_productive_sequences = post_consensus_annotation.out.prod_annotation
 

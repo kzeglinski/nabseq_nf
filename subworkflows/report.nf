@@ -1,7 +1,7 @@
 // make the report
 
 process write_report {
-    tag "reporting_all_samples"
+    tag "creating report ${report_number}"
     label 'process_low'
     publishDir "${params.out_dir}/report", mode: 'copy', pattern: "*.html"
     stageInMode 'copy'
@@ -13,13 +13,10 @@ process write_report {
 
     input:
     val version
-    val organism
     path sample_sheet
     val report_title
     path report_template
-    path productive_only_annotation
-    path full_annotation
-    path nanocomp_output
+    tuple val(report_number), val(organism), val(sample_name), path(productive_only_annotation), path(nanocomp_txt), path(nanocomp_pngs)
     path css_file
     path logo
 
@@ -32,17 +29,18 @@ process write_report {
     #!/usr/bin/env Rscript
     library(tidyverse)
     library(rmarkdown)
-
     rmarkdown::render(
         "$report_template",
         params = list(
-            version = "$version", organism = "$organism", 
+            version = "$version",
             sample_sheet = "$sample_sheet",
-            report_title = "$report_title", 
+            report_title = "${report_title}_${report_number}", 
             annotation_table = "$productive_only_annotation",
-            nanocomp_output = "$nanocomp_output",
+            nanocomp_pngs = "$nanocomp_pngs",
+            nanocomp_txt = "$nanocomp_txt",
+            report_number = $report_number,
             css_file = "$css_file"),
-            output_file = "${report_title}.html"
+            output_file = "${report_title}_${report_number}.html"
         )
 
     """
@@ -51,26 +49,20 @@ process write_report {
 workflow report  {
     take:
         version
-        organism
         sample_sheet
         report_title
         report_template
-        productive_only_annotation
-        full_annotation
-        nanocomp_output
+        reportable_data
         css_file
         logo
         
     main:
         // process this in R
         write_report(version,
-        organism,
         sample_sheet,
         report_title,
         report_template,
-        productive_only_annotation,
-        full_annotation,
-        nanocomp_output,
+        reportable_data,
         css_file,
         logo)
         report = write_report.out.report

@@ -5,7 +5,7 @@
 include { igblast } from '../modules/local/igblast' 
 
 process pre_consensus_groupings {
-    tag "$meta"
+    tag "$prefix"
     label 'process_low'
     publishDir "${params.out_dir}/pre_consensus_grouping", mode: 'copy', pattern: "*.tsv"
 
@@ -25,6 +25,13 @@ process pre_consensus_groupings {
     path("*_read_names.txt"), emit: read_names
 
     script:
+    // allow for a bunch of metadata (although the first element should be sample name)
+    if(meta instanceof Collection) {
+        prefix = meta[0]
+    } else {
+        prefix = meta
+    }
+
     """
     #!/usr/bin/env Rscript
 
@@ -52,12 +59,12 @@ process pre_consensus_groupings {
     igblast_results_grouped_L_full <- arrange(igblast_results_grouped_L_full, desc(count))
 
     # give each clones H and L chain a unique name in the form of H1, H2, L1, L2 etc where 1 is the most abundant, 2 is the second most abundant etc
-    igblast_results_grouped_H_full[, "group_id"] <- paste0("$meta", "_H", seq_len(nrow(igblast_results_grouped_H_full)), "_count_", as.character(unlist(as.vector(igblast_results_grouped_H_full[, "count"]))))
-    igblast_results_grouped_L_full[, "group_id"] <- paste0("$meta", "_L", seq_len(nrow(igblast_results_grouped_L_full)), "_count_", as.character(unlist(as.vector(igblast_results_grouped_L_full[, "count"]))))
+    igblast_results_grouped_H_full[, "group_id"] <- paste0("$prefix", "_H", seq_len(nrow(igblast_results_grouped_H_full)), "_count_", as.character(unlist(as.vector(igblast_results_grouped_H_full[, "count"]))))
+    igblast_results_grouped_L_full[, "group_id"] <- paste0("$prefix", "_L", seq_len(nrow(igblast_results_grouped_L_full)), "_count_", as.character(unlist(as.vector(igblast_results_grouped_L_full[, "count"]))))
 
     # write out a copy of this table 
     igblast_results_grouped_full <- bind_rows(igblast_results_grouped_H_full, igblast_results_grouped_L_full)
-    write_tsv(igblast_results_grouped_full, "${meta}_pre_consensus_grouped_table.tsv")
+    write_tsv(igblast_results_grouped_full, "${prefix}_pre_consensus_grouped_table.tsv")
 
     # prepare for consensus calling 
     # remove those that have less than 3 counts (can't make a consensus with 1 or 2 reads)
@@ -133,17 +140,17 @@ process pre_consensus_groupings {
 workflow annotation_grouping_pre_consensus {
     take:
         trimmed_fasta
-        organism
         igblast_databases
-        igdata_dir
-        igblastdb_dir
         num_consensus
         
     main:
+        // set up environment variables
+        igdata_dir="${igblast_databases}/igdata/"
+        igblastdb_dir="${igblast_databases}/databases/"
+
         // annotate reads using igblast
         igblast_tsv = igblast(
             trimmed_fasta, 
-            organism, 
             igblast_databases, 
             igdata_dir, 
             igblastdb_dir,
