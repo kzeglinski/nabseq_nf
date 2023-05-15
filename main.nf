@@ -94,50 +94,12 @@ include { annotation_grouping_post_consensus } from './subworkflows/annotation_g
 include { report } from './subworkflows/report'
 
 /*
- * Define helper functions
- */
-
-// the last part of this is inspired by https://github.com/stevekm/nextflow-demos/blob/master/join-pairs/main.nf
-def reshape_channel_for_consensus (input_channel, file_ending) {
-    input_channel
-    .map { it -> [it.name -  ~/\.txt/, it] } // get the file names to get the ID from
-    .collect(flat: false){ it[0] } // subset out those filenames
-    .collectNested { it.minus(file_ending) } // remove the file name so it's just the ID
-    .combine(input_channel) // combine the lists so we can pair 
-    .flatten().toList() // honestly idk why but this combination gets it into a form the pairs() function works on
-    .flatMap { pairs(it) } // apply the pairs function
-    .filter { items -> // only keep combinations where the ID matches the filename
-            def id_1 = items[0].toString().replaceAll('.*/{1}', '').replaceAll(file_ending, "") //strips path
-            def id_2 = items[1].toString().replaceAll('.*/{1}', '').replaceAll(file_ending, "")
-            id_1 == id_2
-            }
-
-    .filter { items -> // remove the pairs that are like [ID, ID] instead of [ID, file] or [file, ID]
-            def id_1 = items[0]
-            def id_2 = items[1]
-            id_1 != id_2
-            }
-
-    .filter { items -> // currently we have [ID, file] and [file, ID] but we only need one of them
-            def id_1 = items[0].toString()
-            !id_1.endsWith(".txt") // remove [file, ID] so we're just left with [ID, file]
-            } 
-}
-
-// from https://stackoverflow.com/questions/27868047/groovy-way-to-pair-each-element-in-a-list
-// this is needed to reshape the input channel for consensus calling
-def pairs(def elements) {
-    return elements.tail().collect { [elements.head(), it] } + (elements.size() > 1 ? pairs(elements.tail()) : [])
-}
-
-/*
  * Run the workflow
  */
 workflow{
     // process the sample sheet, then concat all fastq files in
     // the barcode directories & name based on the sample (not barcode)
     concatenated_files = parse_sample_sheet(fastq_dir, sample_sheet, params.barcode_dirs)
-    concatenated_files.view()
  
     // since we are now preparing different report, we need to group the files accordingly
     concatenated_files
@@ -175,45 +137,55 @@ workflow{
         num_consensus)
     pre_consensus_table = annotation_grouping_pre_consensus.out.pre_consensus_table
     
-    // the .collect(flat: false) doesn't do anything to the output. It just means that the next step (reshaping
-    // the channel) won't start until annotation_grouping_pre_consensus is finished running on all samples
-    // otherwise you end up with a shitload of duplicates in the next step
-    
-    read_names_for_consensus = annotation_grouping_pre_consensus.out.read_names_for_consensus.collect(flat: false)
-    starting_points_for_consensus = annotation_grouping_pre_consensus.out.starting_points_for_consensus.collect(flat: false)
+    // get all of the read names + sequence ids into a channel
+    annotation_grouping_pre_consensus.out.read_names_for_consensus
+        .collect(flat: false) // ensures this step doesn't start until all files are ready
+        .flatten() // gets rid of the extra list layer
+        .map { it -> [it.baseName.minus("_read_names"), it] } // reformat to [sequence_id, file]
+        .set{read_names_for_consensus}
 
-    // consensus calling 
-    // getting the channels into the right shape
-    // this section is so clunky and messy and awful but i don't know enough to make it better
+    // do the same for the consensus starting points
+    annotation_grouping_pre_consensus.out.starting_points_for_consensus
+        .collect(flat: false) // ensures this step doesn't start until all files are ready
+        .flatten() // gets rid of the extra list layer
+        .map { it -> [it.baseName.minus("_starting_point_name"), it] } // reformat to [sequence_id, file]
+        .set{starting_points_for_consensus}
 
-    reshaped_read_names = reshape_channel_for_consensus(read_names_for_consensus, "_read_names.txt")
-    reshaped_starting_points = reshape_channel_for_consensus(starting_points_for_consensus, "_starting_point_name.txt")
+    // join the read names and starting points for consensus, based on sequence id
+    read_names_for_consensus
+        .map { tuple( it[0], *it[1..-1] ) } // the asterisk unlists it 
+        .combine(starting_points_for_consensus, by: 0)
+        .set{read_names_and_starting_points_for_consensus}
 
-    // in the next part, we need to combine the trimmed_reads with the reshaped_read_names and reshaped_starting_points
-    // to do that, they both need to have the sample ID in the first position
+    // now add the sample ID to this channel
+    read_names_and_starting_points_for_consensus
+        .map { it -> [it[0].replaceAll(~/_.._count_.*/, ""), *it] } // remove the chain, count etc leaving just sample ID
+        .set {read_names_and_starting_points_for_consensus_with_sample_ID}
+
+    // add the trimmed reads to the channel
+    // first need to reshape the trimmed reads so that the sample ID is in the first position
     trimmed_reads
         .map { tuple( it[0][0], *it[1..-1] ) } // the asterisk unlists it 
         .set {trimmed_reads_with_sample_ID}
 
-    reshaped_read_names
-        .join(reshaped_starting_points)
-        .map{ it -> [it[0].replaceAll('_[^_]*_(.*)', "")] + it} // add sample ID to list
-        .combine(trimmed_reads_with_sample_ID, by: 0) // add trimmed reads to list
+    // add the trimmed reads to the channel with read names and starting points
+    read_names_and_starting_points_for_consensus_with_sample_ID
+        .combine(trimmed_reads_with_sample_ID, by: 0)
         .set{input_for_consensus}
 
     // actually make the consensus 
     consensus_sequences = take_consensus(input_for_consensus, medaka_model)
 
     // annotation & grouping/analysis of consensus sequences
-    // as input for this, we need the pre-consensus grouped table, as well as the consensus sequences
-    consensus_sequences
-        .map{ it -> [it[0].replaceAll('_[^_]*_(.*)', "")] + it }
-        .groupTuple() 
+    // need to get the consensus sequences from [sequence_id, file] into [sample_id, [file1, file2, file3, etc]]
+     consensus_sequences
+        .map { it -> [it[0].replaceAll(~/_.._count_.*/, ""), *it[1..-1]] } // replace sequence ID with sample ID
+        .groupTuple() // group by sample ID
         .set{consensus_sequences_by_sample_id}
-        
+     
     // make a channel of the metadata so that we can add it back in (we need it for the next step)
     trimmed_reads
-        .map { tuple( it[0][0], it[0] ) } // the asterisk unlists it 
+        .map { tuple( it[0][0], it[0] ) } // this is just [sample ID, [metadata]]
         .set {sampleid_metadata}
 
     sampleid_metadata
@@ -271,5 +243,4 @@ workflow{
         css_file,
         logo
     )
-
 }

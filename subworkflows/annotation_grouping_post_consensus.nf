@@ -10,7 +10,7 @@ process cat_all_abs{
     publishDir "${params.out_dir}/consensus_annotation", mode: 'copy', pattern: "*.tsv"
 
     input:
-    tuple val(meta), val(sequence_ids), path(consensus_sequences)
+    tuple val(meta), path(consensus_sequences)
 
     output:
     tuple val(meta), path("*_all_consensus_sequences.fasta")

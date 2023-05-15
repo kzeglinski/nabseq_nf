@@ -20,7 +20,6 @@ process pre_consensus_groupings {
 
     output:
     tuple val(meta), path('*_pre_consensus_grouped_table.tsv'), emit: grouped_table
-    //tuple val(meta), path("*_starting_point_name.txt"), path("*_read_names.txt"), emit: grouped_txts
     path("*_starting_point_name.txt"), emit: starting_points
     path("*_read_names.txt"), emit: read_names
 
@@ -124,12 +123,31 @@ process pre_consensus_groupings {
         mutate(read_length = nchar(sequence)) %>%
         select(-c(sequence)) %>%
         group_by(group_id) %>% 
+        slice(which.max(read_length)) -> igblast_results_grouped_longest_complete_reads
+    
+    # but sometimes we might not have any complete VDJ for a group
+    # in that case, just choose the longest read
+    igblast_results %>%
+        select(c(sequence_id, sequence)) %>%
+        left_join(igblast_results_grouped_long, by = c("sequence_id" = "reads")) %>%
+        filter(!is.na(group_id)) %>%
+        mutate(read_length = nchar(sequence)) %>%
+        select(-c(sequence)) %>%
+        group_by(group_id) %>% 
         slice(which.max(read_length)) -> igblast_results_grouped_longest_reads
 
+    # remove the rows of igblast_results_grouped_longest_reads that appear in igblast_results_grouped_longest_complete_reads
+    igblast_results_grouped_longest_reads %>%
+        anti_join(igblast_results_grouped_longest_complete_reads, by = c("sequence_id" = "sequence_id")) -> igblast_results_grouped_longest_reads_no_dupes
+
+    # then can combine the two tables to come up with our starting point master list
+    igblast_results_grouped_longest_complete_reads %>%
+        bind_rows(igblast_results_grouped_longest_reads_no_dupes) -> starting_point_reads
+    
     # write out these longest reads as the starting copies
-    for (i in seq_along(unlist(as.vector(igblast_results_grouped_longest_reads[, "group_id"])))) {
-        this_group_id <- unname(unlist(as.vector(igblast_results_grouped_longest_reads[, "group_id"]))[i])
-        this_read <- unname(unlist(as.vector(igblast_results_grouped_longest_reads[, "sequence_id"]))[i])
+    for (i in seq_along(unlist(as.vector(starting_point_reads[, "group_id"])))) {
+        this_group_id <- unname(unlist(as.vector(starting_point_reads[, "group_id"]))[i])
+        this_read <- unname(unlist(as.vector(starting_point_reads[, "sequence_id"]))[i])
         this_file <- paste0(this_group_id, "_starting_point_name.txt")
         writeLines(this_read, this_file)
     }
