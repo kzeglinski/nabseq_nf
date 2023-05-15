@@ -18,8 +18,7 @@ Usage: nextflow run ./nabseq_nf/main.nf --fastq_dir [input path] --organism [org
 Required arguments:
 --out_dir             : where the output files will be written to (default: "$projectDir/results)
 --fastq_dir           : where the input fastq files are located
---organism            : name of the organism whose reference sequences to use (default: "rat")
---sample_sheet        : location of the .csv sample sheet (format: barcode01,sample_x)
+--sample_sheet        : location of the .csv sample sheet (format: barcode01,sample_x,rat,1)
 
 Optional (only needed for advanced users)
 --num_consensus       : maximum number of consensus sequences to generate for each sample (default: 999)
@@ -34,9 +33,15 @@ Optional (only needed for advanced users)
 ## Input
 NAb-seq requires as input:
 * The path of a directory where it should write the results
-* The path of the directory containing the basecalled and demultiplexed nanopore reads
+* The path of the directory containing the basecalled and demultiplexed nanopore reads. NAb-seq expects either:
+    - (default) A directory containing all fastqs, starting with barcode names (e.g. barcode01_pass.fq.gz)
+    - (using --barcode_dirs TRUE) A directory containing a folder for each barcode name, which can contain as many different fastqs as you like 
+    - For more detailed information, see the [tutorial website](https://kzeglinski.github.io/nab-seq/index.html)
 * The name of the organism whose reference sequences should be used (rat and mouse are built-in, and you can create custom references for any organism you like 
-* A sample sheet (CSV) in the format: barcode01,sample_x
+* A sample sheet (CSV) in the format: `barcode,sample_name,species,report_group`
+    - Note that `species` should match exactly (case sensitive!) the names of files/folders in the `references` folder. Rat (Rattus norvegicus) and mouse (Mus musculus) references are built-in (referred to as `rat` and `mouse` respectively). You can create custom references for any organism you like. 
+    - The `report_group` column is used to control which samples are reported together. If you want all samples in a single report, just use 1 for each row.
+    - For more detailed information about sample sheets, check out the [tutorial website](https://kzeglinski.github.io/nab-seq/index.html)! There are also example sample sheets there that you can download and edit  
 
 ## Output
 NABseq will produce a report containing sample/run information, QC metrics and the annotation results of productive sequences from all samples. All consensus sequences in FASTA format, as well as intermediate files (NanoComp QC results, IgBLAST results) are written to the results directory also

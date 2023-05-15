@@ -1,9 +1,6 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
 ## [v0.2.0]
 
 First release of the nextflow version of NAb-seq
@@ -18,4 +15,9 @@ New features:
 - you can now specify a `species` column in the sample sheet (so that hybridomas/b cells of different species can be processed in the same run)
 - you can now group samples into reports using a `group` column in the sample sheet (useful for pooling many samples from different labs and issuing a separate report to each one)
 
+## [v0.2.3]
+Bug fixes:
+- added `.fq` and `.fq.gz` to the list of valid fastq file extensions 
 
+New features:
+- 

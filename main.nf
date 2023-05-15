@@ -31,6 +31,7 @@ Required arguments:
 --sample_sheet        : location of the .csv sample sheet (format: barcode01,sample_x,rat,1)
 
 Optional (only needed for advanced users)
+--barcode_dirs        : whether the input fastq files are located within folders named barcode01 etc (default: false)
 --num_consensus       : maximum number of consensus sequences to generate for each sample (default: 999)
 --igblast_databases   : location of the igblast databases (default: "$projectDir/references/igblast/")
 --reference_sequences : location of the reference sequences (default: "$projectDir/references/reference_sequences/")
@@ -92,7 +93,6 @@ include { take_consensus } from './subworkflows/consensus'
 include { annotation_grouping_post_consensus } from './subworkflows/annotation_grouping_post_consensus'
 include { report } from './subworkflows/report'
 
-
 /*
  * Define helper functions
  */
@@ -133,13 +133,12 @@ def pairs(def elements) {
 /*
  * Run the workflow
  */
-
-    
 workflow{
     // process the sample sheet, then concat all fastq files in
     // the barcode directories & name based on the sample (not barcode)
-    concatenated_files = parse_sample_sheet(fastq_dir, sample_sheet)
-
+    concatenated_files = parse_sample_sheet(fastq_dir, sample_sheet, params.barcode_dirs)
+    concatenated_files.view()
+ 
     // since we are now preparing different report, we need to group the files accordingly
     concatenated_files
         .groupTuple(by: 3)
