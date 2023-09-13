@@ -228,6 +228,8 @@ workflow{
         .join(nanocomp_text_ordered_for_report)
         .join(nanocomp_pics_ordered_for_report)
         .set{reportable_data}
+    
+    versions()
 
     // make report
     //report_template = Channel.fromPath(params.report_template)

@@ -43,3 +43,7 @@ Bug fixes:
 
 New features:
 - added ability to run NAb-seq on a single directory full of fastqs rather than having to make separate folders for each barcode 
+
+## [v0.2.4]
+
+- added a new subworkflow to collect the versions of all the tools in modules into a versions.yml file which will be stored in the output directory.
