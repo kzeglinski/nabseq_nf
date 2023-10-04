@@ -92,11 +92,16 @@ include { annotation_grouping_pre_consensus } from './subworkflows/annotation_gr
 include { take_consensus } from './subworkflows/consensus'
 include { annotation_grouping_post_consensus } from './subworkflows/annotation_grouping_post_consensus'
 include { report } from './subworkflows/report'
-
+include { versions } from './subworkflows/versions'
+include { validate_params } from './subworkflows/validate_params'
 /*
  * Run the workflow
  */
 workflow{
+
+    pathsToValidate = [fastq_dir, sample_sheet, reference_dir, igblast_databases].join(',')
+    validate_params(pathsToValidate)
+
     // process the sample sheet, then concat all fastq files in
     // the barcode directories & name based on the sample (not barcode)
     concatenated_files = parse_sample_sheet(fastq_dir, sample_sheet, params.barcode_dirs)
