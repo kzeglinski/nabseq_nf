@@ -38,9 +38,12 @@ NAb-seq requires as input:
     - (using --barcode_dirs TRUE) A directory containing a folder for each barcode name, which can contain as many different fastqs as you like 
     - For more detailed information, see the [tutorial website](https://kzeglinski.github.io/nab-seq/index.html)
 * The name of the organism whose reference sequences should be used (rat and mouse are built-in, and you can create custom references for any organism you like 
-* A sample sheet (CSV) in the format: `barcode,sample_name,species,report_group`
+* A sample sheet (CSV) in the format: `barcode,sample_name,species,(report_group)`
+
     - Note that `species` should match exactly (case sensitive!) the names of files/folders in the `references` folder. Rat (Rattus norvegicus) and mouse (Mus musculus) references are built-in (referred to as `rat` and `mouse` respectively). You can create custom references for any organism you like. 
-    - The `report_group` column is used to control which samples are reported together. If you want all samples in a single report, just use 1 for each row.
+
+    - The `report_group` column is used to control which samples are reported together and is **optional**. If you leave the `report_group` column out of your sample sheet, all samples will be reported in a single report.
+
     - For more detailed information about sample sheets, check out the [tutorial website](https://kzeglinski.github.io/nab-seq/index.html)! There are also example sample sheets there that you can download and edit  
 
 ## Output

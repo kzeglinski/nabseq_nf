@@ -1,3 +1,32 @@
+process check_report_group {
+    input:
+    path sample_sheet
+
+    script:
+    """
+    #!/usr/bin/env python
+
+    import csv
+
+    with open("${sample_sheet}", 'r') as f:
+        reader = csv.reader(f)
+        header = next(reader)
+        if 'report_group' not in header:
+            # Replace the header with the new header
+            new_header = header + ['report_group']
+            rows = [new_header]
+            for row in reader:
+                row.append('1')
+                rows.append(row)
+
+            # Write the modified data back to the sample sheet
+            with open("${sample_sheet}", 'w') as f:
+                writer = csv.writer(f)
+                writer.writerows(rows)
+
+    """
+}
+
 process check_whitespace {
     input:
     path sample_sheet
@@ -46,6 +75,7 @@ process check_reference_sequences {
     fi
     """
 }
+
 
 process check_references {
     input:
@@ -105,16 +135,17 @@ process check_references {
     """
 }
 
+
 workflow validate_sample_sheet {
 
-     take:
+    take:
         sample_sheet
         reference_dir
-    
+
     main:
+        check_report_group(sample_sheet)
         check_whitespace(sample_sheet)
         check_header(sample_sheet)
         check_reference_sequences(reference_dir)
         check_references(sample_sheet, reference_dir)
-
 }
