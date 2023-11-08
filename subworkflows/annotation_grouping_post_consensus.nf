@@ -1,8 +1,8 @@
 // this is the pre consensus annotation and grouping
 // convert fastq to fasta, then run IgBLAST
-// process this in R 
+// process this in R
 
-include { igblast } from '../modules/local/igblast' 
+include { igblast } from '../modules/local/igblast'
 
 process cat_all_abs{
     tag "$prefix"
@@ -32,18 +32,16 @@ process post_consensus_annotation {
     tag "$prefix"
     label 'process_low'
     publishDir "${params.out_dir}/consensus_annotation", mode: 'copy', pattern: "*.tsv"
-
-    conda (params.enable_conda ? 'r::r-tidyverse=1.2.1' : null)
-    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'https://depot.galaxyproject.org/singularity/r-tidyverse%3A1.2.1' :
-        'quay.io/biocontainers/r-tidyverse:1.2.1' }"
+    container "library://kzeglinski/nabseq/nabseq-report:v0.0.3"
 
     input:
     tuple val(meta), path(igblast_output)
+    path(sample_sheet)
 
     output:
-    tuple val(meta), path('*_full_consensus_annotation.tsv'), emit: full_annotation
+    //tuple val(meta), path('*_full_consensus_annotation.tsv'), emit: full_annotation
     tuple val(meta), path('*_productive_only_consensus_annotation.tsv'), emit: prod_annotation
+    tuple val(meta), path('*_flag_data.tsv'), emit: flag_data
 
     script:
     // allow for a bunch of metadata (although the first element should be sample name)
@@ -52,36 +50,110 @@ process post_consensus_annotation {
     } else {
         prefix = meta
     }
-    
+
     """
     #!/usr/bin/env Rscript
 
-    library(tidyverse)
-    
+    library(dplyr)
+    library(tidyr)
+    library(stringr)
+    library(vroom)
+    library(Biostrings)
+
     # read in the igblast output
-    igblast_results <- read.delim(file = "${igblast_output}", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+    igblast_results <- vroom("${igblast_output}",
+        col_select = c(
+            sequence_id, sequence, locus, productive, complete_vdj, v_call,
+            d_call, j_call, c_call, cdr3_aa, v_sequence_start, c_sequence_end))
+
+    if(nrow(igblast_results) == 0){
+        stop("No IgBLAST results found")
+    }
 
     # separate out the counts from the name
-    igblast_results %>% 
+    igblast_results %>%
         extract(sequence_id, into = c("sequence_id", "count"), "(.*)_([^_]+)\$") %>%
         mutate(group_id = gsub('_count', '', sequence_id), .before = count) %>%
         arrange(desc(count)) %>%
         select(-sequence_id) -> igblast_results_with_counts
 
-    # write out a copy of this table 
-    write_tsv(igblast_results_with_counts, "${prefix}_full_consensus_annotation.tsv")
+    # trim to just the V(D)JC region unless otherwise specified
+    if(as.logical("${params.trim_to_antibody}")){
+        igblast_results_with_counts %>%
+            mutate(sequence_untrimmed = sequence) %>%
+            mutate(sequence = str_sub(
+                sequence,
+                start = v_sequence_start,
+                end = ifelse(!is.na(c_sequence_end), c_sequence_end, -1))) -> igblast_results_with_counts
+    }
+
+    # write out a copy of this table
+    vroom_write(igblast_results_with_counts, "${prefix}_full_consensus_annotation.tsv")
 
     # just productive ones
-    # remove those that have less than 3 counts (can't make a consensus with 1 or 2 reads)
     igblast_results_with_counts %>%
         filter(productive == TRUE) %>%
-        select(c(group_id, count, productive, v_call, d_call, j_call, cdr3_aa, v_identity, c_call)) %>%
-        ungroup() %>%
-        group_by(v_call, d_call, j_call, cdr3_aa, v_identity, c_call) %>%
-        summarise(group_id = paste0(group_id, collapse = ", "), count = sum(as.numeric(count))) -> igblast_results_prod_only
-    
-    write_tsv(igblast_results_prod_only, "${prefix}_productive_only_consensus_annotation.tsv")
-        
+        select(-sequence_untrimmed) %>%
+        group_by(v_call, j_call, cdr3_aa, c_call) %>%
+        summarise(
+            group_id = paste0(group_id, collapse = ", "),
+            count = sum(as.numeric(count)),
+            locus = locus[1],
+            d_call = d_call[1],
+            sequence = sequence[which.max(nchar(sequence))]) -> igblast_results_prod_only
+
+    vroom_write(igblast_results_prod_only, "${prefix}_productive_only_consensus_annotation.tsv")
+
+    # prepare flag data for report
+    flag_data <- data.frame(
+        sample_id = str_remove(igblast_results_prod_only[["group_id"]][1], "_.*"),
+        chain_status = "normal",
+        sp2_0_status = "normal"
+    )
+
+    # cover the case where we have no productive sequences
+    if(is.na(flag_data[["sample_id"]][1])){
+        flag_data[["sample_id"]] <- str_remove(igblast_results_with_counts[["group_id"]][1], "_.*")
+    }
+
+    # check for multiple H/L chains
+    igblast_results_prod_only %>%
+        group_by(locus) %>%
+        print()
+    igblast_results_prod_only %>%
+        group_by(locus) %>%
+        dplyr::slice(1) -> grouped_by_chain
+
+    if(any(duplicated(igblast_results_prod_only[["locus"]]))){
+        flag_data[["chain_status"]] <- "Multiple H/L chains"
+    } else if(nrow(grouped_by_chain) < 2){
+        flag_data[["chain_status"]] <- "Missing H/L chain"
+    }
+
+    # align to the aberrant sp2/0 light chain
+    sp2_0 <- DNAString("ATGGAGACAGACACACTCCTGTTATGGGTACTGCTGCTCTGGGTTCCAGGTTCCACTGGTGACATTGTGCTGACACAGTCTCCTGCTTCCTTAGCTGTATCTCTGGGGCAGAGGGCCACCATCTCATACAGGGCCAGCAAAAGTGTCAGTACATCTGGCTATAGTTATATGCACTGGAACCAACAGAAACCAGGACAGCCACCCAGACTCCTCATCTATCTTGTATCCAACCTAGAATCTGGGGTCCCTGCCAGGTTCAGTGGCAGTGGGTCTGGGACAGACTTCACCCTCAACATCCATCCTGTGGAGGAGGAGGATGCTGCAACCTATTACTGTCAGCACATTAGGGAGCTTACACGTTCGGAGGGGGGACCAAGCTGGAAATAAAACGGGCTGATGCTGCACCAACTGTATCCATCTTCCCACCATCCAGTGAGCAGTTAACATCTGGAGGTGCCTCAGTCGTGTGCTTCTTGAACAACTTCTACCCCAAAGACATCAATGTCAAGTGGAAGATTGATGGCAGTGAACGACAAAATGGCGTCCTGAACAGTTGGACTGATCAGGACAGCAAAGACAGCACCTACAGCATGAGCAGCACCCTCACGTTGACCAAGGACGAGTATGAACGACATAACAGCTATACCTGTGAGGCCACTCACAAGACATCAACTTCACCCATTGTCAAGAGCTTCAACAGGAATGAGTGTTAGAGACAAAGGTCCTGAGACGCCACCACCAGCTCCCCAGCTCCATCCTATCTTCCCTTCTAAGGTCTTGGAGGCTTCCCCACAAGCGACCTACCACTGTTGCGGTGCTCCAAACCTCCTCCCCACCTCCTTCTCCTCCTCCTCCCTTTCCTTGGCTTTTATCATGCTAATATTTGCAGAAAATATTCAATAAAGTGAGTCTTTGCACTTGAAAAAAAAAAAAA")
+
+    align_these <- DNAStringSet(igblast_results_prod_only[["sequence"]])
+    sp2_0_identities <- pid(pairwiseAlignment(align_these, sp2_0))
+
+    if(any(sp2_0_identities > 90)){
+        flag_data[["sp2_0_status"]] <- "Aberrant sp2/0 light chain detected"
+    }
+
+    # prepare the final flag
+    if(flag_data[["sp2_0_status"]] == "normal" & flag_data[["chain_status"]] == "normal"){
+        flag_data[["flag"]] <- "normal"
+    } else if(flag_data[["sp2_0_status"]] == "normal"){
+        flag_data[["flag"]] <- flag_data[["chain_status"]]
+    } else if(flag_data[["chain_status"]] == "normal") {
+        flag_data[["flag"]] <- flag_data[["sp2_0_status"]]
+    } else {
+        flag_data[["flag"]] <- paste(
+            flag_data[["chain_status"]], flag_data[["sp2_0_status"]], sep = ",")
+    }
+
+    # write out the flag data
+    vroom_write(flag_data, "${prefix}_flag_data.tsv")
     """
 }
 
@@ -89,7 +161,8 @@ workflow annotation_grouping_post_consensus {
     take:
         final_annotation_files
         igblast_databases
-        
+        sample_sheet
+
     main:
         // cat all consensus sequences from the same sample
         concatenated_sequences = cat_all_abs(final_annotation_files)
@@ -100,21 +173,22 @@ workflow annotation_grouping_post_consensus {
 
         // annotate reads using igblast
         igblast_tsv = igblast(
-            concatenated_sequences, 
-            igblast_databases, 
-            igdata_dir, 
+            concatenated_sequences,
+            igblast_databases,
+            igdata_dir,
             igblastdb_dir,
             "post").airr_table
-        
+
         // process this in R
-        post_consensus_annotation(igblast_tsv)
+        post_consensus_annotation(igblast_tsv, sample_sheet)
 
         // prepare output files
-        all_annotated_sequences = post_consensus_annotation.out.full_annotation
-        only_productive_sequences = post_consensus_annotation.out.prod_annotation
+        annotated_sequences = post_consensus_annotation.out.prod_annotation
+        flag_data = post_consensus_annotation.out.flag_data
+
 
     emit:
-        all_annotated_sequences
-        only_productive_sequences
+        annotated_sequences
+        flag_data
 
 }

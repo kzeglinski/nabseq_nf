@@ -14,9 +14,6 @@ process nanocomp {
 
     output:
     tuple val(sample_name), val(species), val(report_group), path("*.html"), emit: html
-    tuple val(sample_name), val(species), val(report_group), path("*.png") , emit: png
-    tuple val(sample_name), val(species), val(report_group), path("*.txt") , emit: txt
-    tuple val(sample_name), val(species), val(report_group), path("*.log") , emit: log
 
     when:
     task.ext.when == null || task.ext.when

@@ -1,0 +1,214 @@
+---
+title: "NAb-seq report"
+format:
+    html:
+        grid:
+            body-width: 1000px
+            margin-width: 20px
+        theme: minty_edited.scss
+        embed-resources: false
+        toc: true
+        toc-location: left
+        toc-depth: 4
+        toc-expand: 2
+        include-in-header:
+            - text: <link rel = "shortcut icon" href = "favicon.svg" /> <link rel="preconnect" href="https://fonts.googleapis.com"> <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin> <link href="https://fonts.googleapis.com/css2?family=PT+Sans:wght@400;700&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+---
+
+![](nabseq_logo.png){fig-alt="NAb-seq logo" width="980"}
+
+## Introduction
+
+Thank you for running NAb-seq, a Nextflow pipeline for analysing Oxford Nanopore sequencing data from hybridomas and single B cells! If you use these sequences, please cite [our publication](https://pubmed.ncbi.nlm.nih.gov/35965451/):
+
+> Subas Satish HP, Zeglinski K, Uren RT, et al. NAb-seq: an accurate, rapid, and cost-effective method for antibody long-read sequencing in hybridoma cell lines and single B cells. *MAbs*. 2022;14(1):2106621. doi:10.1080/19420862.2022.2106621
+
+### **About the report**
+
+In this report, you will find four sections:
+
+1.  **Samples**, which contains information about your sample(s), and flags any problematic ones (e.g. multiple H/L chain(s) detected, or H/L chain(s) missing)
+
+2.  **Sequencing QC**, which provides information about how the sequencing run went for your sample(s)
+
+3.  **Consensus sequences**, which contains the the antibody sequences for each sample and information about them
+
+4.  **Method summary**, which summarises the wet and dry lab parts of the NAb-seq method in a convenient paragraph
+
+If you have any questions, you can [raise a github issue](https://github.com/kzeglinski/nabseq_nf/issues) or contact me at zeglinski.k\@wehi.edu.au\
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+library(gt)
+library(vroom)
+library(dplyr)
+library(htmltools)
+library(stringr)
+library(Biostrings)
+
+versions <- vroom("versions.yml", col_names = c("tool", "version"))
+versions %>%
+    slice_head(by = "tool") %>%
+    filter(tool %in% c("nabseq", "cutadapt", "seqkit", "igblast", "medaka", "minimap2", "nanocomp", "racon")) %>%
+    mutate(version = str_remove_all(version, "[[:alpha:]]")) %>%
+    mutate(version = str_remove_all(version, "^\\D+")) %>%
+    tibble::deframe() %>%
+    as.list() -> version_list
+```
+
+## Samples
+
+You have run version v`r version_list$nabseq` of NAb-seq on the following samples:
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+sample_sheet <- vroom(fs::dir_ls(glob = "*.csv"))
+table_data <- vroom(fs::dir_ls(glob = "*_flag_data.tsv")) %>%
+    left_join(sample_sheet, by = c("sample_id" = "sample_name"))
+vroom_write(table_data, "sample_data.tsv")
+table_data %>%
+    mutate(simple_flag = case_when(
+        flag == "normal" ~ "#63a33b",
+        str_detect(flag, "Multiple") ~ "#D5944E",
+        str_detect(flag, "Missing") ~ "#ad2321",
+        TRUE ~ "#8f8f8f"
+    )) %>%
+    select(c("barcode", "sample_id", "species", "flag", "simple_flag")) %>%
+# table
+    gt() %>%
+    opt_interactive(
+        use_highlight = TRUE,
+        use_compact_mode = TRUE) %>% # interactive, highlight rows as you hover over
+    tab_options(
+        ihtml.use_page_size_select = TRUE, # choose page size
+        ihtml.page_size_default = 10,
+        ihtml.page_size_values = c(5, 10, 20, 30)) %>%
+    tab_header(
+        title = "Sample information"
+      ) %>%
+    cols_label(
+        barcode = "Barcode",
+        sample_id = "Sample name",
+        species = "Species",
+        flag = "Status"
+        ) %>%
+    opt_table_font(font = google_font("PT Sans")) %>%
+    tab_style(
+        style = cell_text(color = from_column("simple_flag"), weight = "bold"),
+        locations = cells_body(columns = flag)
+        ) %>%
+    cols_hide("simple_flag")
+```
+
+{{< downloadthis sample_data.tsv dname="sample_data" label="Download this table" icon="file-earmark-arrow-down" type="secondary" class="data-button" id="sample_data" >}}
+
+<details class="secondaryDetails">
+
+<summary>What does it mean if the status is not normal?</summary>
+
+<p>
+
+-   **Missing H/L chain** means that either the H or L chain (or both!) are missing. This could be due to insufficient reads, or possibly from a hybridoma that has lost that gene
+
+-   **Multiple H/L chains** means that there are more than one H and/or light chains detected in a sample. This could be due to PCR or sequencing errors, PCR chimeras, leaky transcription from the second allele or hybridomas that express multiple H/L chains
+
+-   **sp2/0 abberrant light chain detected** means that a productive sequence with \>95% similarity to the sp2/0 abberant light chain was found in the sample. We find this occasionally at low abundance, and don’t think it’s anything to worry about.
+
+</p>
+
+</details>
+
+## **Sequencing QC**
+
+This is a selection of the most relevant QC plots produced by [NanoComp](https://github.com/wdecoster/NanoComp). Ideally, we should have a minimum of 75,000 reads per sample, with at least 10-20% being \>1000 bp.
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+htmltools::includeHTML(fs::dir_ls(glob = "*_NanoComp_log_length_violin.html"))
+```
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+htmltools::includeHTML(fs::dir_ls(glob = "*_NanoComp_number_of_reads.html"))
+```
+
+## **Consensus sequences**
+
+The tables below show some information about the **productive and full-length** heavy and light chain sequences NAb-seq has identified in each cell. Productive reads are defined as containing no stop codons or frameshifts.
+
+Sequences can be downloaded in FASTA format by clicking the buttons below each table. You can open these files in any text editing program (e.g. textedit on mac or notepad on windows). Alternatively, if you download the table itself, the sequences are included as an additional column. The table can be opened in any spreadsheet program, like Excel or Numbers.
+
+<details class="secondaryDetails">
+
+<summary>What if my heavy and/or light chain(s) are missing?</summary>
+
+<p>
+
+This means that NAb-seq didn’t generate a productive sequence for that chain.
+
+One possible reason is that there weren’t enough reads, or that the reads were too short. Firstly, take a look at the [sequencing QC](#seq_qc) plots, ideally there should be 75,000 reads per sample, and the length violin plot should still have some width above the 1000 bp point (if only the tail is visible past this point, then the reads are probably a bit short). If this is the case, it is recommended to repeat the sequencing (and library preparation, if the reads are too short). This should give enough reads to generate reliable results.
+
+If the length and number of reads is good, then it is possible that the missing chain wasn’t there to be found! It is not unheard of for hybridomas to lose their antibody genes. This could be confirmed by looking at the unproductive heavy and light chains generated by NAb-seq (if there are 100s of reads belonging to the aberrant Sp2/0 light chain, for example, and none that seem to correspond to an actual productive antibody transcript then this is a good indication that the sequencing was successful but that the transcript just wasn’t there to find).
+
+</p>
+
+</details>
+
+<details class="secondaryDetails">
+
+<summary>What if there multiple heavy and/or light chains?</summary>
+
+<p>
+
+It depends on what they are, and at what level of abundance they are present! Firstly, it is important to remember that NAb-seq is an RNA sequencing approach, and there is no guarantee that every productive transcript we find in a cell will be translated into a protein.
+
+One common thing we observe is the presence of an additional light chain, with a CDR3 along the lines of ‘QHIRELT’ and high (\>95%) identity to the aberrant Sp2/0 light chain, from the myeloma cell line typically used to prepare hybridomas. These are usually present at low levels, and are probably nothing to worry about.
+
+Other reasons for multiple heavy/light chains could be PCR or sequencing errors (this is the likely cause of multiple highly similar sequences being identified), or leaky transcription from the second allele. It is also possible to have [hybridomas that express multiple H/L chains](https://pubmed.ncbi.nlm.nih.gov/29485921/). If you are worried in any way, proteomic analyses can be performed to determine which of the sequences detected by NAb-seq are actually present at the protein level.
+
+</p>
+
+</details>
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+# get all of the sequences
+all_annotations <- as.vector(fs::dir_ls(glob = "*_consensus_annotation.tsv"))
+
+render_child <- function(file, i) {
+  name <- str_remove(file, "_productive_only_consensus_annotation.tsv")
+  res = knitr::knit_child(
+   text = xfun::read_utf8("_consensus_template.qmd"),
+   envir = rlang::env(file = file, name = name),
+   quiet = TRUE
+  )
+  cat(res, sep = '\n')
+  cat("\n")
+}
+```
+
+```{r}
+#| results: "asis"
+#| echo: false
+purrr::iwalk(all_annotations, render_child)
+```
+
+## **Method summary**
+
+This section contains a summarised version of the NAb-seq method. You can find more details in [our publication](https://pubmed.ncbi.nlm.nih.gov/35965451/).
+
+RNA samples were prepared for sequencing using the Nanopore PCR-cDNA barcoding kit (SQK-PCB111; Oxford Nanopore Technologies), according to manufacturer’s instructions. Following sequencing, they were basecalled using guppy v6.5.7 (Oxford Nanopore Technologies) and put through the NAb-seq (v`r version_list$nabseq`) pipeline. Briefly, sequencing quality control was performed with [NanoComp](https://academic.oup.com/bioinformatics/article/39/5/btad311/7160911) (v`r version_list$nanocomp`). Antibody reads were identified by alignment to reference sequences using [minimap2](https://academic.oup.com/bioinformatics/article/34/18/3094/4994778) (v`r version_list$minimap2`), and trimmed to remove sequencing adapters with [cutadapt](https://journal.embnet.org/index.php/embnetjournal/article/view/200) (v`r version_list$cutadapt`). Reads were then annotated to identify their germline genes using [IgBLAST](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3692102/) (v`r version_list$igblast`), and grouped for consensus calling. Consensus sequences were generated for each group having at least 3 reads, using [racon](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5411768/) (v`r version_list$racon`), followed by [medaka](https://github.com/nanoporetech/medaka) (v`r version_list$medaka`). The consensus sequences were then re-annotated using [IgBLAST](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3692102/) (v`r version_list$igblast`) and a report generated to summarise the results.

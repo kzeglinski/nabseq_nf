@@ -1,0 +1,70 @@
+## `r name`
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+original_annotation_data <- vroom(file)
+text_to_display <- ""
+
+if(nrow(original_annotation_data) == 0){
+    text_to_display <- "No productive H and or L chains found"
+    table <- gt(original_annotation_data)
+} else {
+    annotation_data <- original_annotation_data %>%
+    arrange(desc(count)) %>%
+    relocate(locus) %>%
+    relocate (d_call, .after = v_call)
+
+    vroom_write(annotation_data, paste0(name, "_table.tsv"))
+
+    table <- gt(annotation_data) %>%
+    cols_add(locus_col = case_when(
+        locus == "IGH" ~ "#AA2E8B",
+        TRUE ~ "#E86252"
+    )) %>%
+    opt_interactive(
+        use_filter = TRUE,
+        use_highlight = TRUE,
+        use_compact_mode = TRUE) %>% # interactive, highlight rows as you hover over
+    tab_options(
+        ihtml.use_page_size_select = TRUE, # choose page size
+        ihtml.page_size_default = 10,
+        ihtml.page_size_values = c(5, 10, 20, 30)) %>%
+    tab_header(
+        title = "Consensus sequence information"
+    ) %>%
+    cols_label(
+        locus = "Locus",
+        v_call = "V gene",
+        d_call = "D gene",
+        j_call = "J gene",
+        c_call = "C gene",
+        cdr3_aa = "CDR3",
+        group_id = "Sequence IDs",
+        count = "Count"
+    ) %>%
+    opt_table_font(font = google_font("PT Sans")) %>%
+    tab_style(
+        style = cell_text(color = from_column("locus_col"), weight = "bold"),
+        locations = cells_body(columns = locus)
+    ) %>%
+    cols_hide(c("sequence", "locus_col"))
+
+    # make fasta files
+    nt_seqs <- DNAStringSet(annotation_data$sequence)
+    names(nt_seqs) <- annotation_data$group_id
+
+    writeXStringSet(nt_seqs, paste0(name, "_nt.fasta"), format = "fasta")
+}
+
+table
+
+```
+
+`r text_to_display`
+
+{{< downloadthis `r paste0(name, "_table.tsv")` dname=`r paste0(name, "_table")` label="Download table (.csv)" icon="file-earmark-arrow-down" type="secondary" class="data-button" id=`r paste0(name, "_table")` >}}
+
+{{< downloadthis `r paste0(name, "_nt.fasta")` dname=`r paste0(name, "_nt")` label="Download sequences (.fasta)" icon="file-earmark-arrow-down" type="secondary" class="data-button" id=`r paste0(name, "_nt")` >}}

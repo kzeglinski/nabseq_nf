@@ -45,7 +45,6 @@ process cutadapt {
         --cores $task.cpus \\
         $args \\
         $trim_pattern \\
-        --discard-untrimmed \\
         -n 2 \\
         -m 300 \\
         --revcomp \\

@@ -3,12 +3,14 @@
 process igblast {
     tag "$prefix"
     label 'process_high'
+    publishDir "${params.out_dir}/original_igblast", mode: 'copy'
+
 
     conda (params.enable_conda ? 'bioconda::igblast=1.19.0' : null)
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         'https://depot.galaxyproject.org/singularity/igblast%3A1.19.0--pl5321h3928612_0' :
         'quay.io/biocontainers/igblast:1.19.0--pl5321h3928612_0' }"
-    
+
     input:
     tuple val(meta), path(reads)
     val igblast_databases
