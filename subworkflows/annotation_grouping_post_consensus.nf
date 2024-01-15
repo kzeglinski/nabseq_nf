@@ -107,7 +107,7 @@ process post_consensus_annotation {
     # prepare flag data for report
     flag_data <- data.frame(
         sample_id = str_remove(igblast_results_prod_only[["group_id"]][1], "_.*"),
-        chain_status = "normal",
+        chain_status = "",
         sp2_0_status = "normal"
     )
 
@@ -118,17 +118,25 @@ process post_consensus_annotation {
 
     # check for multiple H/L chains
     igblast_results_prod_only %>%
-        group_by(locus) %>%
-        print()
-    igblast_results_prod_only %>%
-        group_by(locus) %>%
-        dplyr::slice(1) -> grouped_by_chain
+        filter(!is.na(cdr3_aa)) %>% # dont flag duplicates with no CDR3
+        ungroup() %>%
+        group_by(cdr3_aa) %>%
+        dplyr::slice_max(order_by = count, n = 1) -> dup_cdr3_removed # don't flag duplicates with the same CDR3
 
-    if(any(duplicated(igblast_results_prod_only[["locus"]]))){
-        flag_data[["chain_status"]] <- "Multiple H/L chains"
-    } else if(nrow(grouped_by_chain) < 2){
-        flag_data[["chain_status"]] <- "Missing H/L chain"
+    if(length(unique(dup_cdr3_removed[["locus"]])) < 2){
+        flag_data[["chain_status"]] <- paste(flag_data[["chain_status"]], "Missing H/L chain")
     }
+
+    if(any(duplicated(dup_cdr3_removed[["locus"]]))){
+        flag_data[["chain_status"]] <- paste(flag_data[["chain_status"]], " Multiple H/L chains")
+    }
+
+    if(flag_data[["chain_status"]] == ""){
+        flag_data[["chain_status"]] <- "normal"
+    }
+
+    # remove whitespace
+    flag_data[["chain_status"]] <- str_trim(flag_data[["chain_status"]])
 
     # align to the aberrant sp2/0 light chain
     sp2_0 <- DNAString("ATGGAGACAGACACACTCCTGTTATGGGTACTGCTGCTCTGGGTTCCAGGTTCCACTGGTGACATTGTGCTGACACAGTCTCCTGCTTCCTTAGCTGTATCTCTGGGGCAGAGGGCCACCATCTCATACAGGGCCAGCAAAAGTGTCAGTACATCTGGCTATAGTTATATGCACTGGAACCAACAGAAACCAGGACAGCCACCCAGACTCCTCATCTATCTTGTATCCAACCTAGAATCTGGGGTCCCTGCCAGGTTCAGTGGCAGTGGGTCTGGGACAGACTTCACCCTCAACATCCATCCTGTGGAGGAGGAGGATGCTGCAACCTATTACTGTCAGCACATTAGGGAGCTTACACGTTCGGAGGGGGGACCAAGCTGGAAATAAAACGGGCTGATGCTGCACCAACTGTATCCATCTTCCCACCATCCAGTGAGCAGTTAACATCTGGAGGTGCCTCAGTCGTGTGCTTCTTGAACAACTTCTACCCCAAAGACATCAATGTCAAGTGGAAGATTGATGGCAGTGAACGACAAAATGGCGTCCTGAACAGTTGGACTGATCAGGACAGCAAAGACAGCACCTACAGCATGAGCAGCACCCTCACGTTGACCAAGGACGAGTATGAACGACATAACAGCTATACCTGTGAGGCCACTCACAAGACATCAACTTCACCCATTGTCAAGAGCTTCAACAGGAATGAGTGTTAGAGACAAAGGTCCTGAGACGCCACCACCAGCTCCCCAGCTCCATCCTATCTTCCCTTCTAAGGTCTTGGAGGCTTCCCCACAAGCGACCTACCACTGTTGCGGTGCTCCAAACCTCCTCCCCACCTCCTTCTCCTCCTCCTCCCTTTCCTTGGCTTTTATCATGCTAATATTTGCAGAAAATATTCAATAAAGTGAGTCTTTGCACTTGAAAAAAAAAAAAA")

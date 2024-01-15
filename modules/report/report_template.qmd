@@ -74,8 +74,8 @@ vroom_write(table_data, "sample_data.tsv")
 table_data %>%
     mutate(simple_flag = case_when(
         flag == "normal" ~ "#63a33b",
-        str_detect(flag, "Multiple") ~ "#D5944E",
         str_detect(flag, "Missing") ~ "#ad2321",
+        str_detect(flag, "Multiple") ~ "#D5944E",
         TRUE ~ "#8f8f8f"
     )) %>%
     select(c("barcode", "sample_id", "species", "flag", "simple_flag")) %>%
