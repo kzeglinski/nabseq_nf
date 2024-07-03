@@ -1,0 +1,94 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema",
+    "$id": "https://raw.githubusercontent.com/YOUR_PIPELINE/master/nextflow_schema.json",
+    "title": "Nextflow pipeline parameters",
+    "description": "This pipeline uses Nextflow and processes some kind of data. The JSON Schema was built using the nf-core pipeline schema builder.",
+    "type": "object",
+    "definitions": {
+        "main_parameters": {
+            "title": "Main parameters",
+            "type": "object",
+            "description": "",
+            "default": "",
+            "properties": {
+                "fastq_dir": {
+                    "type": "string",
+                    "description": "The directory containing your .fastq files",
+                    "format": "directory-path"
+                },
+                "out_dir": {
+                    "type": "string",
+                    "description": "Directory to write the output to",
+                    "format": "directory-path"
+                },
+                "sample_sheet": {
+                    "type": "string",
+                    "description": "Path to your sample sheet",
+                    "format": "file-path"
+                },
+                "trim_5p": {
+                    "type": "string",
+                    "description": "Sequence to trim from 5' end. If using old PCB109 data change to TTTCTGTTGGTGCTGATATTGCTGGG",
+                    "default": "TTTCTGTTGGTGCTGATATTGCTTT"
+                },
+                "medaka_model": {
+                    "type": "string",
+                    "description": "Name of medaka model (see: https://github.com/nanoporetech/medaka/tree/master/medaka/data)",
+                    "default": "r941_min_sup_g507"
+                }
+            },
+            "required": [
+                "fastq_dir",
+                "out_dir",
+                "sample_sheet"
+            ]
+        },
+        "advanced_settings": {
+            "title": "Advanced settings",
+            "type": "object",
+            "description": "",
+            "default": "",
+            "properties": {
+                "num_consensus": {
+                    "type": "integer",
+                    "description": "How many consensus sequences (per cell/cell line) to generate. Reducing this will reduce runtime",
+                    "default": 999
+                },
+                "igblast_databases": {
+                    "type": "string",
+                    "description": "Location of IgBLAST databases",
+                    "default": "$projectDir/references/igblast/",
+                    "format": "directory-path"
+                },
+                "reference_sequences": {
+                    "type": "string",
+                    "description": "Location of reference sequence .fasta files",
+                    "default": "$projectDir/references/reference_sequences/",
+                    "format": "directory-path"
+                },
+                "trim_3p": {
+                    "type": "string",
+                    "default": "A{20}N{90}",
+                    "description": "Sequence to trim from 3' end"
+                },
+                "barcode_dirs": {
+                    "type": "boolean",
+                    "description": "If true, fastq_dir points to a directory containing one folder per barcode (rather than one fastq file per barcode)"
+                },
+                "trim_to_antibody": {
+                    "type": "boolean",
+                    "description": "Whether to trim consensus sequences to just the V(D)JC region",
+                    "default": true
+                }
+            }
+        }
+    },
+    "allOf": [
+        {
+            "$ref": "#/definitions/main_parameters"
+        },
+        {
+            "$ref": "#/definitions/advanced_settings"
+        }
+    ]
+}
