@@ -7,7 +7,7 @@ include { igblast } from '../modules/local/igblast'
 process pre_consensus_groupings {
     tag "$prefix"
     label 'process_low'
-    publishDir "${params.out_dir}/pre_consensus_grouping", mode: 'copy', pattern: "*.tsv"
+    publishDir "${params.output_dir}/pre_consensus_grouping", mode: 'copy', pattern: "*.tsv"
 
     conda (params.enable_conda ? 'r::r-tidyverse=1.2.1' : null)
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
