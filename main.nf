@@ -1,6 +1,6 @@
 #!/usr/bin/env nextflow
 
-version = "v0.3.0"
+version = "v0.4.1"
 
 // TODO: help message
 if(params.help == true){
@@ -26,7 +26,7 @@ Required arguments:
 --sample_sheet        : location of the .csv sample sheet (format: barcode01,sample_x,rat,1)
 
 Defaults you might want to change:
---out_dir             : where the output files will be written to (default: "$projectDir/results)
+--output_dir          : where the output files will be written to (default: "$projectDir/results)
 --barcode_dirs        : whether the input fastq files are located within folders named barcode01 etc (default: false)
 --num_consensus       : maximum number of consensus sequences to generate for each sample (default: 999)
 --trim_3p             : pattern for cutadapt to trim off the 3' end (default: "A{20}N{90}")
@@ -70,7 +70,7 @@ read directory              : ${params.fastq_dir}
 number of consensus seqs    : ${params.num_consensus}
 sample sheet                : ${params.sample_sheet}
 medaka model                : ${params.medaka_model}
-output directory            : ${params.out_dir}
+output directory            : ${params.output_dir}
 """
 
 /*
