@@ -3,7 +3,7 @@
 process write_report {
     tag "creating report ${report_number}"
     label 'process_low'
-    publishDir "${params.out_dir}/report", mode: 'copy', pattern: "*.zip"
+    publishDir "${params.output_dir}/report", mode: 'copy', pattern: "*.zip"
     stageInMode 'copy'
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         'library://kzeglinski/nabseq/nabseq-report:v0.0.3' :
