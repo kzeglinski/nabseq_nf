@@ -19,7 +19,8 @@
                 "out_dir": {
                     "type": "string",
                     "description": "Directory to write the output to",
-                    "format": "directory-path"
+                    "format": "directory-path",
+                    "default": "."
                 },
                 "sample_sheet": {
                     "type": "string",
@@ -91,4 +92,37 @@
             "$ref": "#/definitions/advanced_settings"
         }
     ]
+
+    "properties": {
+        "aws_image_prefix": {
+            "type": "string",
+            "hidden": true
+        },
+        "aws_queue": {
+            "type": "string",
+            "hidden": true
+        },
+        "monochrome_logs": {
+            "type": "boolean"
+        },
+        "validate_params": {
+            "type": "boolean",
+            "default": true
+        },
+        "show_hidden_params": {
+            "type": "boolean"
+        }
+    },
+    "resources": {
+        "recommended": {
+            "cpus": 8,
+            "memory": "32GB"
+        },
+        "minimum": {
+            "cpus": 4,
+            "memory": "16GB"
+        },
+        "run_time": "5 minutes per sample",
+        "arm_support": true 
+    }
 }
