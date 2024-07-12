@@ -7,7 +7,7 @@ include { igblast } from '../modules/local/igblast'
 process cat_all_abs{
     tag "$prefix"
     label 'process_low'
-    publishDir "${params.out_dir}/consensus_annotation", mode: 'copy', pattern: "*.tsv"
+    publishDir "${params.output_dir}/consensus_annotation", mode: 'copy', pattern: "*.tsv"
 
     input:
     tuple val(meta), path(consensus_sequences)
