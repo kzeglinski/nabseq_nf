@@ -5,7 +5,9 @@ process write_report {
     label 'process_low'
     publishDir "${params.out_dir}/report", mode: 'copy', pattern: "*.zip"
     stageInMode 'copy'
-    container "library://kzeglinski/nabseq/nabseq-report:v0.0.3"
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        'library://kzeglinski/nabseq/nabseq-report:v0.0.3' :
+        'ghcr.io/kzeglinski/nabseq_report:0.0.3' }"
 
     input:
     val report_number
