@@ -14,32 +14,36 @@
                 "fastq_dir": {
                     "type": "string",
                     "description": "The directory containing your .fastq files",
-                    "format": "directory-path"
+                    "format": "directory-path",
+                    "help_text": "NAb-seq supports two structures for the fastq_dir. Either:\n(1) A directory with one fastq file per barcode (this is the default)\n(2) A directory containing one subdirectory per barcode, which can contain any number of fastq files (to use this, please set barcode_dirs to TRUE)"
                 },
                 "output_dir": {
                     "type": "string",
                     "description": "Directory to write the output to",
-                    "format": "directory-path",
+                    "format": "directory-path"
                 },
                 "sample_sheet": {
                     "type": "string",
                     "description": "Path to your sample sheet",
-                    "format": "file-path"
+                    "format": "file-path",
+                    "help_text": "Sample sheets should now have the structure barcode,sample_name,species,report_group. For example:\n\nbarcode,sample_name,species,report_group\nbarcode16,28-21-4E10-2-1,rat,1\nbarcode17,28-21-5H11-5-1,rat,1\nbarcode18,15-14-7H9-19-1,mouse,2\nbarcode19,42-11-A4-D1-2-1,mouse,2\nbarcode20,9-13-IB4-1-1,rat,3\nbarcode21,25-19-5A6-1-1,rat,4\n\nWhere:\nbarcode is the nanopore barcode used.\nsample_name is the name of the sample. I have tested that dashes and underscores work ok, other special characters may cause issues so use at your own risk\nspecies s the name of the species for that sample, either rat or mouse (case sensitive) if you want to use NAb-seq’s built-in references.\nreport_group is used to create separate reports for different groups of samples. In the example above, there would be four reports created, one with the first two samples, one with the third and fourth samples and then the last two samples each in their own report. If you want all samples in the same report, just set all to 1."
                 },
                 "trim_5p": {
                     "type": "string",
                     "description": "Sequence to trim from 5' end. If using old PCB109 data change to TTTCTGTTGGTGCTGATATTGCTGGG",
-                    "default": "TTTCTGTTGGTGCTGATATTGCTTT"
+                    "default": "TTTCTGTTGGTGCTGATATTGCTTT",
+                    "help_text": "If you're just following the standard nanopore sequencing protocol, this will be your TSO.\nSo TTTCTGTTGGTGCTGATATTGCTTT for PCB111 and PCB114 data (default), or TTTCTGTTGGTGCTGATATTGCTGGG for PCB109 data.\n\n"
                 },
                 "medaka_model": {
                     "type": "string",
-                    "description": "Name of medaka model (see: https://github.com/nanoporetech/medaka/tree/master/medaka/data)",
-                    "default": "r941_min_sup_g507"
+                    "description": "Name of medaka model (see helptext for common ones)",
+                    "default": "r1041_e82_400bps_sup_v5.0.0",
+                    "help_text": "You can find all the medaka models here: https://github.com/nanoporetech/medaka/tree/master/medaka/data\n\nThe default (newest basecaller + kit 14 chemistry) is r1041_e82_400bps_sup_v5.0.0\nFor older R9.4.1 chemistry (PCB109 & PCB111 kits), use r941_min_sup_g507 or r941_prom_sup_g507\n\nIn general you just need to remember to (1) only choose normal models (not variant or anything), (2) choose sup models (as you should be basecalling in sup for NAb-seq) and (3) ensure your dorado model version matches the model\n\nBut to be honest, sometimes I forget to change/update the model and it still comes out fine :)"
                 }
             },
             "required": [
                 "fastq_dir",
-                "out_dir",
+                "output_dir",
                 "sample_sheet"
             ]
         },
@@ -54,22 +58,11 @@
                     "description": "How many consensus sequences (per cell/cell line) to generate. Reducing this will reduce runtime",
                     "default": 999
                 },
-                "igblast_databases": {
-                    "type": "string",
-                    "description": "Location of IgBLAST databases",
-                    "default": "$projectDir/references/igblast/",
-                    "format": "directory-path"
-                },
-                "reference_sequences": {
-                    "type": "string",
-                    "description": "Location of reference sequence .fasta files",
-                    "default": "$projectDir/references/reference_sequences/",
-                    "format": "directory-path"
-                },
                 "trim_3p": {
                     "type": "string",
                     "default": "A{20}N{90}",
-                    "description": "Sequence to trim from 3' end"
+                    "description": "Sequence to trim from 3' end",
+                    "help_text": "This should just be your polyA tail :)"
                 },
                 "barcode_dirs": {
                     "type": "boolean",

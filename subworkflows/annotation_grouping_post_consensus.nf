@@ -32,7 +32,9 @@ process post_consensus_annotation {
     tag "$prefix"
     label 'process_low'
     publishDir "${params.out_dir}/consensus_annotation", mode: 'copy', pattern: "*.tsv"
-    container "library://kzeglinski/nabseq/nabseq-report:v0.0.3"
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        'library://kzeglinski/nabseq/nabseq-report:v0.0.3' :
+        'ghcr.io/kzeglinski/nabseq_report:0.0.4' }"
 
     input:
     tuple val(meta), path(igblast_output)

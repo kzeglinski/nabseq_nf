@@ -7,7 +7,7 @@ process write_report {
     stageInMode 'copy'
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         'library://kzeglinski/nabseq/nabseq-report:v0.0.3' :
-        'ghcr.io/kzeglinski/nabseq_report:0.0.3' }"
+        'ghcr.io/kzeglinski/nabseq_report:0.0.4' }"
 
     input:
     val report_number
@@ -17,7 +17,7 @@ process write_report {
     tuple val(report_number), val(organism), val(sample_name), path(productive_only_annotation), path(nanocomp_htmls), path(flag_data)
 
     output:
-    path('*.zip'), emit: report
+    path('*.html'), emit: report
 
     script:
 
@@ -25,15 +25,16 @@ process write_report {
     export DENO_DIR="\$PWD"
     export XDG_CACHE_HOME="/tmp/quarto_cache_home"
     export XDG_DATA_HOME="/tmp/quarto_data_home"
+    export XDG_RUNTIME_DIR="\$PWD"
 
     unzip template_files.zip
     quarto render report_template.qmd --to html --output "NAb-seq report ${report_number}.html"
-    mkdir NAb-seq_report_${report_number}
-    cp "NAb-seq report ${report_number}.html" NAb-seq_report_${report_number}
-    cp favicon.svg NAb-seq_report_${report_number}
-    cp nabseq_logo.png NAb-seq_report_${report_number}
-    cp -r report_template_files/ NAb-seq_report_${report_number}
-    zip -r NAb-seq_report_${report_number}.zip NAb-seq_report_${report_number}/
+    #mkdir NAb-seq_report_${report_number}
+    #cp "NAb-seq report ${report_number}.html" NAb-seq_report_${report_number}
+    #cp favicon.svg NAb-seq_report_${report_number}
+    #cp nabseq_logo.png NAb-seq_report_${report_number}
+    #cp -r report_template_files/ NAb-seq_report_${report_number}
+    #zip -r NAb-seq_report_${report_number}.zip NAb-seq_report_${report_number}/
     """
 }
 

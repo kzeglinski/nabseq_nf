@@ -1,8 +1,8 @@
 // this is the pre consensus annotation and grouping
 // convert fastq to fasta, then run IgBLAST
-// process this in R 
+// process this in R
 
-include { igblast } from '../modules/local/igblast' 
+include { igblast } from '../modules/local/igblast'
 
 process pre_consensus_groupings {
     tag "$prefix"
@@ -11,8 +11,8 @@ process pre_consensus_groupings {
 
     conda (params.enable_conda ? 'r::r-tidyverse=1.2.1' : null)
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'https://depot.galaxyproject.org/singularity/r-tidyverse%3A1.2.1' :
-        'quay.io/biocontainers/r-tidyverse:1.2.1' }"
+        'library://kzeglinski/nabseq/nabseq-report:v0.0.3' :
+        'ghcr.io/kzeglinski/nabseq_report:0.0.4' }"
 
     input:
     tuple val(meta), path(igblast_output)
@@ -45,7 +45,7 @@ process pre_consensus_groupings {
     select(c(v_call, d_call, j_call, c_call, sequence_id)) %>%
     mutate(n = rep(1, nrow(igblast_results))) %>%
     group_by(v_call, d_call, j_call, c_call) %>%
-        summarise(count = sum(n), .groups = "keep", 
+        summarise(count = sum(n), .groups = "keep",
             reads = paste(sequence_id, collapse = "_")) -> igblast_results_grouped
 
     # separate out the heavy and light chains
@@ -61,11 +61,11 @@ process pre_consensus_groupings {
     igblast_results_grouped_H_full[, "group_id"] <- paste0("$prefix", "_H", seq_len(nrow(igblast_results_grouped_H_full)), "_count_", as.character(unlist(as.vector(igblast_results_grouped_H_full[, "count"]))))
     igblast_results_grouped_L_full[, "group_id"] <- paste0("$prefix", "_L", seq_len(nrow(igblast_results_grouped_L_full)), "_count_", as.character(unlist(as.vector(igblast_results_grouped_L_full[, "count"]))))
 
-    # write out a copy of this table 
+    # write out a copy of this table
     igblast_results_grouped_full <- bind_rows(igblast_results_grouped_H_full, igblast_results_grouped_L_full)
     write_tsv(igblast_results_grouped_full, "${prefix}_pre_consensus_grouped_table.tsv")
 
-    # prepare for consensus calling 
+    # prepare for consensus calling
     # remove those that have less than 3 counts (can't make a consensus with 1 or 2 reads)
     igblast_results_grouped_H_full %>%
         filter(count >= 3) -> igblast_results_grouped_H
@@ -74,7 +74,7 @@ process pre_consensus_groupings {
         filter(count >= 3) -> igblast_results_grouped_L
 
     # select the top n groups, based on the parameter set
-    # default value is 999 which should keep all 
+    # default value is 999 which should keep all
     if ($num_consensus < nrow(igblast_results_grouped_H)) {
         igblast_results_grouped_H <- igblast_results_grouped_H[1:$num_consensus,]
     }
@@ -98,8 +98,8 @@ process pre_consensus_groupings {
         writeLines(this_reads, this_file)
     }
 
-    # choose the starting copy 
-    # make a long format data where each read is a row (but still keep track of which group each read belongs to) 
+    # choose the starting copy
+    # make a long format data where each read is a row (but still keep track of which group each read belongs to)
     igblast_results_grouped_long <- bind_rows(
         separate_rows(igblast_results_grouped_L, reads, sep = "_"),
         separate_rows(igblast_results_grouped_H, reads, sep = "_"))
@@ -122,9 +122,9 @@ process pre_consensus_groupings {
         filter(complete_vdj == TRUE) %>%
         mutate(read_length = nchar(sequence)) %>%
         select(-c(sequence)) %>%
-        group_by(group_id) %>% 
+        group_by(group_id) %>%
         slice(which.max(read_length)) -> igblast_results_grouped_longest_complete_reads
-    
+
     # but sometimes we might not have any complete VDJ for a group
     # in that case, just choose the longest read
     igblast_results %>%
@@ -133,7 +133,7 @@ process pre_consensus_groupings {
         filter(!is.na(group_id)) %>%
         mutate(read_length = nchar(sequence)) %>%
         select(-c(sequence)) %>%
-        group_by(group_id) %>% 
+        group_by(group_id) %>%
         slice(which.max(read_length)) -> igblast_results_grouped_longest_reads
 
     # remove the rows of igblast_results_grouped_longest_reads that appear in igblast_results_grouped_longest_complete_reads
@@ -143,7 +143,7 @@ process pre_consensus_groupings {
     # then can combine the two tables to come up with our starting point master list
     igblast_results_grouped_longest_complete_reads %>%
         bind_rows(igblast_results_grouped_longest_reads_no_dupes) -> starting_point_reads
-    
+
     # write out these longest reads as the starting copies
     for (i in seq_along(unlist(as.vector(starting_point_reads[, "group_id"])))) {
         this_group_id <- unname(unlist(as.vector(starting_point_reads[, "group_id"]))[i])
@@ -151,7 +151,7 @@ process pre_consensus_groupings {
         this_file <- paste0(this_group_id, "_starting_point_name.txt")
         writeLines(this_read, this_file)
     }
-        
+
     """
 }
 
@@ -160,7 +160,7 @@ workflow annotation_grouping_pre_consensus {
         trimmed_fasta
         igblast_databases
         num_consensus
-        
+
     main:
         // set up environment variables
         igdata_dir="${igblast_databases}/igdata/"
@@ -168,9 +168,9 @@ workflow annotation_grouping_pre_consensus {
 
         // annotate reads using igblast
         igblast_tsv = igblast(
-            trimmed_fasta, 
-            igblast_databases, 
-            igdata_dir, 
+            trimmed_fasta,
+            igblast_databases,
+            igdata_dir,
             igblastdb_dir,
             "pre").airr_table
 
