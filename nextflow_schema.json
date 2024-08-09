@@ -37,7 +37,7 @@
                 "medaka_model": {
                     "type": "string",
                     "description": "Name of medaka model (see helptext for common ones)",
-                    "default": "r1041_e82_400bps_sup_v5.0.0",
+                    "default": "r1041_e82_400bps_sup_v4.3.0",
                     "help_text": "You can find all the medaka models here: https://github.com/nanoporetech/medaka/tree/master/medaka/data\n\nThe default (newest basecaller + kit 14 chemistry) is r1041_e82_400bps_sup_v5.0.0\nFor older R9.4.1 chemistry (PCB109 & PCB111 kits), use r941_min_sup_g507 or r941_prom_sup_g507\n\nIn general you just need to remember to (1) only choose normal models (not variant or anything), (2) choose sup models (as you should be basecalling in sup for NAb-seq) and (3) ensure your dorado model version matches the model\n\nBut to be honest, sometimes I forget to change/update the model and it still comes out fine :)"
                 }
             },

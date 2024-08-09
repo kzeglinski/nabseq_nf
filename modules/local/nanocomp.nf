@@ -2,7 +2,7 @@
 process nanocomp {
     tag "$sample_name"
     label 'process_low'
-    publishDir "${params.out_dir}/nanocomp", mode: 'copy'
+    publishDir "${params.output_dir}/nanocomp", mode: 'copy'
 
     conda (params.enable_conda ? 'bioconda::nanocomp=1.19.3' : null)
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?

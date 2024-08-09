@@ -153,7 +153,7 @@ process nanocomp {
 
 process racon {
     label 'process_tiny'
-    publishDir "${params.out_dir}/versions", mode: 'copy', pattern: "*.yml"
+    publishDir "${params.output_dir}/versions", mode: 'copy', pattern: "*.yml"
 
     conda (params.enable_conda ? "bioconda::racon=1.4.20" : null)
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?

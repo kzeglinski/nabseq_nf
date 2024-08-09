@@ -57,3 +57,10 @@ Exciting update!!!!!
 - added the --trim_to_antibody option (on by default) which trims the sequences to only contain from the start of the V region to the end of the C region
 - changed the default value of the --trim_5p parameter to be the sequence of the PCB111 TSO, seeing as the PCB109 kit is now discontinued
 - new 'versions' workflow creates a file with all software versions. these are incorportated into the reports as well, in a short paragraph explaining the NAb-seq method
+
+## [v0.4.2]
+updated for compatibility with nextflow GUI software like EPI2ME and sequera cloud
+- the default medaka model has been updated to a kit 14 one. please double check this model against the one you used to basecall your data to ensure best results
+- renamed the out_dir parameter to output_dir (needed for EPI2ME)
+- replaced the slow paf/seqkit based selection of antibody reads with a fast samtools based version. thank you to Matthew Care for noticing this problem and providing the solution! 
+- returned to integrated HTML reports. beware that if you are sending these via email, some providers might block them for antivirus protections

@@ -3,7 +3,7 @@
 process igblast {
     tag "$prefix"
     label 'process_high'
-    publishDir "${params.out_dir}/original_igblast", mode: 'copy'
+    publishDir "${params.output_dir}/original_igblast", mode: 'copy'
 
 
     conda (params.enable_conda ? 'bioconda::igblast=1.19.0' : null)

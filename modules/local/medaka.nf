@@ -3,7 +3,7 @@
 process medaka {
     tag "$sequence_id"
     label 'process_high'
-    publishDir "${params.out_dir}/consensus_sequences", mode: 'copy'
+    publishDir "${params.output_dir}/consensus_sequences", mode: 'copy'
 
 
     conda (params.enable_conda ? "bioconda::medaka=1.11.3" : null)

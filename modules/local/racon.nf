@@ -10,7 +10,7 @@ process racon {
         'quay.io/biocontainers/racon:1.4.20--h9a82719_1' }"
 
     input:
-    tuple val(sequence_id), path(reads), path(assembly), path(paf)
+    tuple val(sequence_id), path(reads), path(assembly), path(sam)
 
     output:
     tuple val(sequence_id), path(reads), path('*_racon_consensus.fasta') , emit: results
@@ -24,7 +24,7 @@ process racon {
     """
     racon -t "$task.cpus" \\
         "${reads}" \\
-        "${paf}" \\
+        "${sam}" \\
         $args \\
         -w 5000 -u -g -8 -x -6 -m 8 \\
         "${assembly}" > \\
