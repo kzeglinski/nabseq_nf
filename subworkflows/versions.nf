@@ -82,10 +82,10 @@ process igblast {
 process medaka {
     label 'process_tiny'
 
-    conda (params.enable_conda ? "bioconda::medaka=1.4.4" : null)
+    conda (params.enable_conda ? "bioconda::medaka=1.11.3" : null)
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'https://depot.galaxyproject.org/singularity/medaka:1.4.4--py38h130def0_0' :
-        'quay.io/biocontainers/medaka:1.4.4--py38h130def0_0' }"
+        'https://depot.galaxyproject.org/singularity/medaka:1.11.3--py39h05d5c5e_0' :
+        'quay.io/biocontainers/medaka:1.11.3--py39h05d5c5e_0' }"
 
     input:
         path "versions.yml"

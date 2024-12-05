@@ -138,7 +138,7 @@ process pre_consensus_groupings {
 
     # remove the rows of igblast_results_grouped_longest_reads that appear in igblast_results_grouped_longest_complete_reads
     igblast_results_grouped_longest_reads %>%
-        anti_join(igblast_results_grouped_longest_complete_reads, by = c("sequence_id" = "sequence_id")) -> igblast_results_grouped_longest_reads_no_dupes
+        anti_join(igblast_results_grouped_longest_complete_reads, by = c("group_id" = "group_id")) -> igblast_results_grouped_longest_reads_no_dupes
 
     # then can combine the two tables to come up with our starting point master list
     igblast_results_grouped_longest_complete_reads %>%
