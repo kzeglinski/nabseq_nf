@@ -16,7 +16,7 @@ Usage: nextflow run ./nabseq_nf/main.nf --fastq_dir [input path] --organism [org
 --help                : prints this help message
 
 Required arguments:
---out_dir             : where the output files will be written to (default: "$projectDir/results)
+--output_dir             : where the output files will be written to (default: "$projectDir/results)
 --fastq_dir           : where the input fastq files are located
 --sample_sheet        : location of the .csv sample sheet (format: barcode01,sample_x,rat,1)
 
