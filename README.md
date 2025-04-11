@@ -26,7 +26,7 @@ Optional (only needed for advanced users)
 --reference_sequences : location of the reference sequences (default: "$projectDir/references/reference_sequences/")
 --trim_3p             : pattern for cutadapt to trim off the 3' end (default: "A{20}N{90}")
 --trim_5p             : pattern for cutadapt to trim off the 5' end (default: "")
---medaka_model        : model to use for medaka (depends on your basecalling model, default:"r941_min_sup_g507")
+--medaka_model        : model to use for medaka (depends on your basecalling model, default:"r1041_e82_400bps_sup_v4.3.0")
 --report_title        : title to use for naming the report (default: "NAb-seq report")
 ```
 
